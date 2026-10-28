@@ -1,2 +1,2 @@
 ﻿// Browser-safe publishable key only. Never put a Supabase service-role key here.
-window.FAIR_APP_CONFIG={supabaseUrl:"https://aktxgvbzmuuatwpimcyz.supabase.co",supabaseKey:"sb_publishable_7L4I_QN6C2yyiSjihG9L9Q_FyNBCwVQ"};
+window.FAIR_APP_CONFIG={supabaseUrl:"https://aktxgvbzmuuatwpimcyz.supabase.co",supabaseKey:"sb_publishable_uCoOyNzisH01c72O27-SgA_oUTfvS1V"};
