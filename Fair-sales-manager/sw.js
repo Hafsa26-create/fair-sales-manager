@@ -1,1 +1,66 @@
-const CACHE="fair-sales-static-v1";const FILES=["./","./index.html","./styles.css","./config.js","./app.js","./manifest.webmanifest","./icon.svg"];self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method!=="GET"||u.origin!==location.origin)return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request).then(r=>r||caches.match("./index.html"))))});
+const CACHE = "fair-sales-static-v1";
+
+const FILES = [
+    "./",
+    "./index.html",
+    "./styles.css",
+    "./config.js",
+    "./app.js",
+    "./manifest.webmanifest",
+    "./icon.svg"
+];
+
+self.addEventListener("install", (event) => {
+    event.waitUntil(
+        caches.open(CACHE).then((cache) => cache.addAll(FILES))
+    );
+});
+
+self.addEventListener("activate", (event) => {
+    event.waitUntil(
+        caches.keys().then((keys) =>
+            Promise.all(
+                keys
+                    .filter((key) => key !== CACHE)
+                    .map((key) => caches.delete(key))
+            )
+        )
+    );
+});
+
+self.addEventListener("fetch", (event) => {
+    const request = event.request;
+    const url = new URL(request.url);
+
+    if (request.method !== "GET" || url.origin !== self.location.origin) {
+        return;
+    }
+
+    event.respondWith(
+        fetch(request)
+            .then((response) => {
+                if (response.ok) {
+                    const responseToCache = response.clone();
+
+                    caches.open(CACHE).then((cache) => {
+                        cache.put(request, responseToCache);
+                    });
+                }
+
+                return response;
+            })
+            .catch(() =>
+                caches.match(request).then((cachedResponse) => {
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+
+                    if (request.mode === "navigate") {
+                        return caches.match("./index.html");
+                    }
+
+                    return Response.error();
+                })
+            )
+    );
+});
