@@ -1,12 +1,13 @@
+
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
 
 :root {
-    --ink: #25352c;
-    --muted: #728077;
-    --paper: #f6f7f3;
-    --line: #e5e9e2;
-    --green: #385b46;
-    --soft: #eaf0e9;
+    --ink: #24100c;
+    --muted: #221310;
+    --paper: #fdcedd;
+    --line: #F0DCE3;
+    --green: #270e17;
+    --soft: #270e16;
 }
 
 * {
@@ -17,7 +18,7 @@ body {
     margin: 0;
     background: var(--paper);
     color: var(--ink);
-    font: 15px 'DM Sans', sans-serif;
+    font: 16px 'DM Sans', sans-serif;
     line-height: 1.5;
 }
 
@@ -33,7 +34,7 @@ button {
 
 header {
     height: 70px;
-    background: white;
+    background: #3E2723;
     border-bottom: 1px solid var(--line);
     display: flex;
     align-items: center;
@@ -41,6 +42,7 @@ header {
     padding: 0 max(16px, calc((100% - 1000px) / 2));
     position: sticky;
     top: 0;
+    z-index: 10;
 }
 
 header strong,
@@ -48,14 +50,18 @@ header small {
     display: block;
 }
 
+header strong {
+    color: #FFFFFF;
+}
+
 header small {
-    font-size: 11px;
-    color: var(--muted);
+    font-size: 16px;
+    color: #F8DDE7;
 }
 
 .logo {
-    background: var(--ink);
-    color: white;
+    background: #251319;
+    color: #FFFFFF;
     border-radius: 12px;
     padding: 7px 14px;
     font: 25px 'Playfair Display', serif;
@@ -64,7 +70,7 @@ header small {
 .quiet {
     margin-left: auto;
     background: transparent;
-    color: var(--green);
+    color: #FFFFFF;
     border: 0;
     padding: 10px;
 }
@@ -103,19 +109,19 @@ p {
 }
 
 .eyebrow {
-    font-size: 10px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 1.5px;
-    color: #879789;
+    color: #795E59;
 }
 
 .card {
-    background: white;
+    background: #FFF9F5;
     border: 1px solid var(--line);
     border-radius: 18px;
     padding: 21px;
     margin-bottom: 16px;
-    box-shadow: 0 10px 30px #25352c0a;
+    box-shadow: 0 10px 30px #3E27230A;
 }
 
 .tabs,
@@ -135,12 +141,14 @@ p {
 
 .tabs button {
     background: none;
+    color: var(--ink);
     border: 0;
     padding: 0 0 12px;
 }
 
 .tabs button.active {
     border-bottom: 2px solid var(--green);
+    color: var(--green);
     font-weight: bold;
 }
 
@@ -148,9 +156,9 @@ label {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 700;
-    color: #4e5c52;
+    color: #5E403C;
     margin-bottom: 13px;
 }
 
@@ -158,18 +166,18 @@ input,
 select {
     width: 100%;
     min-height: 44px;
-    border: 1px solid #dce3da;
+    border: 1px solid #E8CBD5;
     border-radius: 10px;
     padding: 10px 11px;
-    background: white;
+    background: #FFFFFF;
     color: var(--ink);
     outline: none;
 }
 
 input:focus,
 select:focus {
-    border-color: #789681;
-    box-shadow: 0 0 0 3px #eaf0e9;
+    border-color: #f8d1de;
+    box-shadow: 0 0 0 3px #F8E3EB;
 }
 
 form {
@@ -183,23 +191,32 @@ button.secondary {
     padding: 12px 15px;
     font-weight: 700;
     min-height: 44px;
+    color: #FFFFFF;
 }
 
 .primary {
     background: var(--green);
-    color: white;
+    color: #FFFFFF;
     width: 100%;
 }
 
 .secondary {
     background: var(--soft);
-    color: var(--green);
+    color: #FFFFFF;
+}
+
+/* Ensure button text stays white */
+button.primary,
+button.secondary,
+.primary,
+.secondary {
+    color: #FFFFFF;
 }
 
 .muted,
 small {
     color: var(--muted);
-    font-size: 12px;
+    font-size: 16px;
 }
 
 .heading {
@@ -211,11 +228,12 @@ small {
 }
 
 .pill {
-    background: white;
+    background: #30141b;
+    color: white;
     border: 1px solid var(--line);
     border-radius: 30px;
     padding: 7px 10px;
-    font-size: 11px;
+    font-size: 16px;
     white-space: nowrap;
 }
 
@@ -237,7 +255,7 @@ small {
 }
 
 .stat {
-    background: white;
+    background: #ffe0b1;
     border: 1px solid var(--line);
     border-radius: 15px;
     padding: 15px;
@@ -251,7 +269,7 @@ small {
 }
 
 .stat small {
-    font-size: 11px;
+    font-size: 15px;
 }
 
 .report {
@@ -262,22 +280,23 @@ small {
 }
 
 .report div {
-    background: #f8f9f6;
+    background: #ffe0b1;
     padding: 12px;
     border-radius: 10px;
-    font-size: 11px;
-    color: var(--muted);
+    font-size: 15px;
+    color: #30141b;
 }
 
 .report b {
     display: block;
     font-size: 15px;
-    color: var(--ink);
+    color: #30141b;
     margin-top: 5px;
 }
 
 .total {
-    background: var(--soft);
+    background: #ffc8dd;
+    color: #30141b;
     border-radius: 11px;
     padding: 13px 15px;
     display: flex;
@@ -294,7 +313,8 @@ small {
     display: flex;
     justify-content: space-between;
     padding: 12px;
-    background: #f8f9f6;
+    background: #47292f;
+    color: var(--ink);
     border-radius: 10px;
     margin-top: 8px;
     font-size: 13px;
@@ -315,7 +335,8 @@ small {
 }
 
 .sales-table th {
-    background: #f8f9f6;
+    background: #FFF5F7;
+    color: var(--ink);
 }
 
 .toast {
@@ -324,22 +345,23 @@ small {
     left: 50%;
     transform: translateX(-50%);
     background: var(--ink);
-    color: white;
+    color: #FFFFFF;
     padding: 12px 17px;
     border-radius: 10px;
     max-width: 90%;
-    z-index: 5;
+    z-index: 20;
 }
 
 .toast.error {
-    background: #9d3939;
+    background: #ffb3b7;
+    color: #FFFFFF;
 }
 
 footer {
     text-align: center;
-    color: #929d94;
+    color: #795E59;
     padding: 20px;
-    font-size: 11px;
+    font-size: 15px;
 }
 
 @media (max-width: 700px) {
