@@ -169,19 +169,33 @@
                 )
                 .join("")
             : '<option value="">No fair assigned yet</option>';
+if (!fairs.length) {
+    fair = null;
 
-        if (!fairs.length) {
-            fair = null;
-            role = null;
+    const { data: isOwner, error: ownerError } =
+        await db.rpc("fair_sales_is_existing_owner");
 
-            toggle();
+    if (ownerError) {
+        console.error("Owner check failed:", ownerError);
+        role = null;
+        toggle();
 
-            $("nofair").textContent =
-                "No fair assigned. Owner can create one, or ask them to add your email.";
+        $("nofair").textContent =
+            "Could not verify owner access. Please refresh and sign in again.";
 
-            return;
-        }
+        return;
+    }
 
+    role = isOwner === true ? "owner" : null;
+
+    toggle();
+
+    $("nofair").textContent = role === "owner"
+        ? "No fair created yet. You can create a new fair below."
+        : "No fair assigned. Ask the owner to add your account.";
+
+    return;
+}
         const f = fairs[0];
 
         $("fairSelect").value = f.id;
@@ -195,9 +209,9 @@
             role !== "employee" || !fair
         );
 
-        $("owner").classList.toggle(
-            "hidden",
-            role !== "owner" || !fair
+       $("owner").classList.toggle(
+         "hidden",
+          role !== "owner"
         );
 
         $("role").textContent =
