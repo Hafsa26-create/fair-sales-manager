@@ -161,6 +161,22 @@
                 role: roles.get(f.id)
             }));
 
+            
+const manageFairSelect = $("manageFairSelect");
+
+if (manageFairSelect) {
+    manageFairSelect.innerHTML = fairs.length
+        ? '<option value="">Choose a fair</option>' +
+          fairs
+              .map(
+                  (f) =>
+                      `<option value="${f.id}">${esc(f.name)}</option>`
+              )
+              .join("")
+        : '<option value="">No fair available</option>';
+}
+
+
         $("fairSelect").innerHTML = fairs.length
             ? fairs
                 .map(
@@ -696,17 +712,7 @@ if (!fairs.length) {
     })
 );
 
-            await data(
-                db
-                    .from("fair_sales_financials")
-                    .insert({
-                        fair_id: f.id,
-                        stall_rent: +$("rent").value,
-                        lunch_per_day: +$("lunch").value,
-                        commission_rate: +$("commission").value / 100,
-                        other_expenses: +$("other").value
-                    })
-            );
+           
 
             e.target.reset();
 
