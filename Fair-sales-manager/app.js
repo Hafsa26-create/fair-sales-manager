@@ -74,6 +74,126 @@
     }
 
 
+
+    // ========================================
+    // OFFLINE STORAGE & SALES SYNC
+    // ========================================
+
+    const OFFLINE_DB = "fair-sales-offline";
+    const OFFLINE_VERSION = 1;
+
+    function openOfflineDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(OFFLINE_DB, OFFLINE_VERSION);
+
+            request.onupgradeneeded = () => {
+                const store = request.result;
+                if (!store.objectStoreNames.contains("snapshots")) {
+                    store.createObjectStore("snapshots", { keyPath: "userId" });
+                }
+                if (!store.objectStoreNames.contains("pendingSales")) {
+                    store.createObjectStore("pendingSales", { keyPath: "id" });
+                }
+            };
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async function offlineRequest(storeName, mode, action) {
+        const offlineDB = await openOfflineDB();
+        return new Promise((resolve, reject) => {
+            const tx = offlineDB.transaction(storeName, mode);
+            const store = tx.objectStore(storeName);
+            let request;
+            try {
+                request = action(store);
+            } catch (error) {
+                offlineDB.close();
+                reject(error);
+                return;
+            }
+            tx.oncomplete = () => {
+                offlineDB.close();
+                resolve(request?.result);
+            };
+            tx.onerror = () => {
+                offlineDB.close();
+                reject(tx.error || request?.error);
+            };
+            tx.onabort = () => {
+                offlineDB.close();
+                reject(tx.error || new Error("Offline storage transaction failed."));
+            };
+        });
+    }
+
+    const saveSnapshot = (snapshot) =>
+        offlineRequest("snapshots", "readwrite", store => store.put(snapshot));
+
+    const getSnapshot = (userId) =>
+        offlineRequest("snapshots", "readonly", store => store.get(userId));
+
+    const savePendingSale = (sale) =>
+        offlineRequest("pendingSales", "readwrite", store => store.put(sale));
+
+    const getPendingSales = () =>
+        offlineRequest("pendingSales", "readonly", store => store.getAll());
+
+    const removePendingSale = (id) =>
+        offlineRequest("pendingSales", "readwrite", store => store.delete(id));
+
+    let syncingSales = false;
+
+    async function updatePendingStatus() {
+        const pending = await getPendingSales();
+        const count = pending.filter(item => item.entered_by === user?.id).length;
+        $("sync").textContent = count
+            ? `● ${count} pending sync`
+            : navigator.onLine ? "● Online" : "● Offline";
+        return count;
+    }
+
+    async function syncPendingSales() {
+        if (syncingSales || !navigator.onLine || !user) {
+            await updatePendingStatus();
+            return;
+        }
+
+        syncingSales = true;
+        try {
+            const pending = await getPendingSales();
+            const mine = pending.filter(item => item.entered_by === user.id);
+
+            for (const sale of mine) {
+                const { error } = await db
+                    .from("fair_sales_entries")
+                    .upsert(sale, { onConflict: "id", ignoreDuplicates: true });
+
+                if (error) throw error;
+                await removePendingSale(sale.id);
+            }
+
+            await updatePendingStatus();
+            if (mine.length && fair && role === "owner") {
+                await report();
+            }
+            if (mine.length) {
+                $("entryStatus").textContent = "All pending sales synced.";
+                msg("Offline sales synced successfully.");
+            }
+        } catch (error) {
+            console.error("Offline sales sync:", error);
+            $("sync").textContent = "● Sync pending";
+            msg("Some sales are still waiting to sync. They remain saved on this device.", true);
+        } finally {
+            syncingSales = false;
+            await updatePendingStatus();
+        }
+    }
+
+
     // ========================================
     // 3. AUTHENTICATION UI
     // ========================================
@@ -124,6 +244,7 @@
 
         try {
             await loadFairs();
+            await syncPendingSales();
         } catch (error) {
             activeUserId = null;
             throw error;
@@ -136,30 +257,31 @@
     // ========================================
 
     async function loadFairs() {
-        fairs = await data(
-            db
-                .from("fair_sales_fairs")
-                .select("*")
-                .order("created_at", { ascending: false })
-        );
-
-        const ms = await data(
-            db
-                .from("fair_sales_memberships")
-                .select("fair_id,role")
-                .eq("user_id", user.id)
-        );
-
-        const roles = new Map(
-            ms.map((m) => [m.fair_id, m.role])
-        );
-
-        fairs = fairs
-            .filter((f) => roles.has(f.id))
-            .map((f) => ({
+        try {
+            const remoteFairs = await data(
+                db.from("fair_sales_fairs").select("*").order("created_at", { ascending: false })
+            );
+            const ms = await data(
+                db.from("fair_sales_memberships").select("fair_id,role").eq("user_id", user.id)
+            );
+            const roles = new Map(ms.map((m) => [m.fair_id, m.role]));
+            fairs = remoteFairs.filter((f) => roles.has(f.id)).map((f) => ({
                 ...f,
                 role: roles.get(f.id)
             }));
+            const previous = await getSnapshot(user.id);
+            await saveSnapshot({
+                userId: user.id,
+                fairs,
+                selectedFairId: previous?.selectedFairId || fairs[0]?.id || null,
+                productsByFair: previous?.productsByFair || {}
+            });
+        } catch (networkError) {
+            const snapshot = await getSnapshot(user.id);
+            if (!snapshot?.fairs?.length) throw networkError;
+            fairs = snapshot.fairs;
+            msg("Offline mode: using fairs saved on this device.");
+        }
 
             
 const manageFairSelect = $("manageFairSelect");
@@ -287,14 +409,31 @@ if (!fairs.length) {
     // ========================================
 
     async function loadProducts() {
-        products = await data(
-            db
-                .from("fair_sales_products")
-                .select("id,fair_id,product_code,active")
-                .eq("fair_id", fair.id)
-                .eq("active", true)
-                .order("product_code")
-        );
+        try {
+            products = await data(
+                db.from("fair_sales_products")
+                    .select("id,fair_id,product_code,active")
+                    .eq("fair_id", fair.id)
+                    .eq("active", true)
+                    .order("product_code")
+            );
+            const snapshot = await getSnapshot(user.id) || {
+                userId: user.id, fairs, productsByFair: {}
+            };
+            snapshot.productsByFair = snapshot.productsByFair || {};
+            snapshot.productsByFair[fair.id] = products.map(({id,fair_id,product_code,active}) => ({
+                id, fair_id, product_code, active
+            }));
+            snapshot.selectedFairId = fair.id;
+            snapshot.fairs = fairs;
+            await saveSnapshot(snapshot);
+        } catch (networkError) {
+            const snapshot = await getSnapshot(user.id);
+            const cached = snapshot?.productsByFair?.[fair.id];
+            if (!cached?.length) throw networkError;
+            products = cached;
+            msg("Offline mode: using saved product categories.");
+        }
 
         if (role === "owner") {
             const costs = await data(
@@ -644,17 +783,30 @@ if (!fairs.length) {
                 );
             }
 
-            await data(
-                db
-                    .from("fair_sales_entries")
-                    .insert({
-                        fair_id: fair.id,
-                        product_id,
-                        quantity,
-                        unit_selling_price,
-                        entered_by: user.id
-                    })
-            );
+            const saleRecord = {
+                id: crypto.randomUUID(),
+                fair_id: fair.id,
+                product_id,
+                quantity,
+                unit_selling_price,
+                entered_by: user.id,
+                created_at: new Date().toISOString()
+            };
+
+            if (navigator.onLine) {
+                try {
+                    await data(
+                        db.from("fair_sales_entries").insert(saleRecord)
+                    );
+                } catch (networkError) {
+                    if (networkError.code && networkError.code !== "PGRST000") {
+                        throw networkError;
+                    }
+                    await savePendingSale(saleRecord);
+                }
+            } else {
+                await savePendingSale(saleRecord);
+            }
 
             $("entryStatus").textContent =
                 `Saved: ${
@@ -665,7 +817,10 @@ if (!fairs.length) {
             $("price").value = "";
             $("total").textContent = money(0);
 
-            msg("Sale saved successfully.");
+            const pendingCount = await updatePendingStatus();
+            msg(pendingCount
+                ? "Sale saved on this device. Waiting to sync."
+                : "Sale saved successfully.");
         } catch (e) {
             msg(e.message, true);
         }
@@ -984,6 +1139,13 @@ testOwnerCheck();
 
         $("expenseDate").value =
             new Date().toISOString().slice(0, 10);
+
+        window.addEventListener("online", () => {
+            syncPendingSales();
+        });
+        window.addEventListener("offline", () => {
+            updatePendingStatus().catch(console.error);
+        });
 
         db.auth.onAuthStateChange((_e, s) => {
             setTimeout(
