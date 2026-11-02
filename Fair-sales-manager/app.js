@@ -244,6 +244,7 @@
 
         try {
             await loadFairs();
+            await syncPendingSales();
         } catch (error) {
             activeUserId = null;
             throw error;
