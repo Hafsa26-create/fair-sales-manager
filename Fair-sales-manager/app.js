@@ -682,6 +682,81 @@ if (!fairs.length) {
     $("price").oninput = updateTotal;
 
 
+
+    
+    // ========================================
+    // 10. MANAGE / DELETE FAIR
+    // ========================================
+
+    const manageFairSelect = $("manageFairSelect");
+    const deleteFairBtn = $("deleteFairBtn");
+
+    if (manageFairSelect && deleteFairBtn) {
+        manageFairSelect.onchange = () => {
+            deleteFairBtn.disabled =
+                role !== "owner" || !manageFairSelect.value;
+        };
+
+        deleteFairBtn.onclick = async () => {
+            const fairId = manageFairSelect.value;
+            const selectedFair = fairs.find(
+                (item) => item.id === fairId
+            );
+
+            if (role !== "owner" || !selectedFair || !fairId) {
+                msg("Select a fair that you own.", true);
+                return;
+            }
+
+            const confirmed = window.confirm(
+                `Delete "${selectedFair.name}" permanently? All sales, products, expenses and fair records belonging to this fair will also be deleted. This cannot be undone.`
+            );
+
+            if (!confirmed) return;
+
+            deleteFairBtn.disabled = true;
+            deleteFairBtn.textContent = "Deleting...";
+
+            try {
+                await data(
+                    db.rpc("fair_sales_delete_fair", {
+                        p_fair_id: fairId
+                    })
+                );
+
+                if (fair?.id === fairId) {
+                    fair = null;
+                    products = [];
+                    sales = [];
+                    expenses = [];
+                    finance = null;
+
+                    if (channel) {
+                        await db.removeChannel(channel);
+                        channel = null;
+                    }
+                }
+
+                await loadFairs();
+                msg("Fair deleted successfully.");
+
+            } catch (e) {
+                msg(
+                    e.message || "Could not delete this fair.",
+                    true
+                );
+            } finally {
+                deleteFairBtn.textContent =
+                    "Delete selected fair";
+
+                deleteFairBtn.disabled =
+                    role !== "owner" || !manageFairSelect.value;
+            }
+        };
+    }
+
+
+
     // ========================================
     // 10. CREATE FAIR FORM
     // ========================================
