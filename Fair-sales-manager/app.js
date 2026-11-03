@@ -991,36 +991,23 @@ if (!fairs.length) {
                 throw Error("Choose a fair as owner.");
             }
 
-            const p = await data(
-                db
-                    .from("fair_sales_products")
-                    .upsert(
-                        {
-                            fair_id: fair.id,
-                            product_code: $("code").value.trim(),
-                            active: true
-                        },
-                        {
-                            onConflict: "fair_id,product_code"
-                        }
-                    )
-                    .select("*")
-                    .single()
-            );
+            const productCode = $("code").value.trim().toUpperCase();
+            const buyingPrice = Number($("buying").value);
+
+            if (!/^[A-Z][0-9]$/.test(productCode)) {
+                throw Error("Enter a code with one capital letter and one digit, for example A7.");
+            }
+
+            if (!Number.isFinite(buyingPrice) || buyingPrice < 0 || $("buying").value === "") {
+                throw Error("Enter a valid buying price of zero or more.");
+            }
 
             await data(
-                db
-                    .from("fair_sales_product_costs")
-                    .upsert(
-                        {
-                            product_id: p.id,
-                            fair_id: fair.id,
-                            buying_price: +$("buying").value
-                        },
-                        {
-                            onConflict: "product_id"
-                        }
-                    )
+                db.rpc("fair_sales_add_price_code", {
+                    p_fair_id: fair.id,
+                    p_buying_price: buyingPrice,
+                    p_product_code: productCode
+                })
             );
 
             e.target.reset();
