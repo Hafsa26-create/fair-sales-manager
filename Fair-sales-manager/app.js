@@ -73,6 +73,22 @@
         }
     }
 
+    function isNetworkError(error) {
+        const message = String(error?.message || "").toLowerCase();
+        return !navigator.onLine ||
+            error instanceof TypeError ||
+            error?.name === "FetchError" ||
+            error?.status === 0 ||
+            error?.code === "PGRST000" ||
+            [
+                "failed to fetch",
+                "networkerror",
+                "network request failed",
+                "load failed",
+                "fetch failed"
+            ].some((phrase) => message.includes(phrase));
+    }
+
 
 
     // ========================================
@@ -776,6 +792,7 @@ if (!fairs.length) {
                 !product_id ||
                 !Number.isInteger(quantity) ||
                 quantity < 1 ||
+                !Number.isFinite(unit_selling_price) ||
                 unit_selling_price < 0
             ) {
                 throw Error(
@@ -799,7 +816,7 @@ if (!fairs.length) {
                         db.from("fair_sales_entries").insert(saleRecord)
                     );
                 } catch (networkError) {
-                    if (networkError.code && networkError.code !== "PGRST000") {
+                    if (!isNetworkError(networkError)) {
                         throw networkError;
                     }
                     await savePendingSale(saleRecord);
