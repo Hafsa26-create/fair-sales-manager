@@ -295,12 +295,12 @@
 
         <div class="card">
           <h2>Product categories</h2>
-          <p class="muted">Buying price is visible only to you.</p>
+          <p class="muted">Buying price is visible only to you. Use one letter + one number (for example A7). The same buying price must always use the same code.</p>
 
           <form id="productform" class="grid">
             <label>
-              Product code
-              <input id="code" placeholder="Product 1" required>
+              Manual price code
+              <input id="code" placeholder="A7" maxlength="2" pattern="[A-Za-z][0-9]" title="Use one letter followed by one number, for example A7." autocapitalize="characters" required>
             </label>
 
             <label>
@@ -315,7 +315,7 @@
             </label>
 
             <button class="secondary span">
-              Add / update category
+              Save price code
             </button>
           </form>
 
