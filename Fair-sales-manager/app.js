@@ -165,15 +165,22 @@
     async function updatePendingStatus() {
         const pending = await getPendingSales();
         const count = pending.filter(item => item.entered_by === user?.id).length;
-        $("sync").textContent = count
-            ? `● ${count} pending sync`
-            : navigator.onLine ? "● Online" : "● Offline";
+        const syncLabel = $("sync");
+        if (syncLabel) {
+            syncLabel.textContent = count
+                ? `● ${count} pending sync`
+                : navigator.onLine ? "● Online" : "● Offline";
+        }
         return count;
     }
 
     async function syncPendingSales() {
         if (syncingSales || !navigator.onLine || !user) {
-            await updatePendingStatus();
+            try {
+                await updatePendingStatus();
+            } catch (error) {
+                console.warn("Could not read offline sync status:", error);
+            }
             return;
         }
 
@@ -201,11 +208,15 @@
             }
         } catch (error) {
             console.error("Offline sales sync:", error);
-            $("sync").textContent = "● Sync pending";
+            if ($("sync")) $("sync").textContent = "● Sync pending";
             msg("Some sales are still waiting to sync. They remain saved on this device.", true);
         } finally {
             syncingSales = false;
-            await updatePendingStatus();
+            try {
+                await updatePendingStatus();
+            } catch (statusError) {
+                console.warn("Could not refresh offline sync status:", statusError);
+            }
         }
     }
 
@@ -1121,26 +1132,6 @@ if (!fairs.length) {
             }
         );
                
-   async function testOwnerCheck() {
-    const { data: userData, error: userError } =
-        await db.auth.getUser();
-
-    const { data: ownerData, error: ownerError } =
-        await db.rpc("fair_sales_is_existing_owner");
-
-    console.log("Auth user:", {
-        id: userData?.user?.id,
-        error: userError
-    });
-
-    console.log("Existing owner:", {
-        data: ownerData,
-        error: ownerError
-    });
-}
-testOwnerCheck();
-
-
         $("expenseDate").value =
             new Date().toISOString().slice(0, 10);
 
