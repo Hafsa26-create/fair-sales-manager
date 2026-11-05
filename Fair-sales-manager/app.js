@@ -406,6 +406,26 @@ if (!fairs.length) {
             : "No fair selected.";
     }
 
+    async function syncGlobalPriceCodesToFair(fairId) {
+        if (role !== "owner" || !fairId) return;
+
+        const catalog = await data(
+            db.from("fair_sales_price_codes")
+                .select("product_code,buying_price")
+                .order("product_code")
+        );
+
+        for (const item of catalog) {
+            await data(
+                db.rpc("fair_sales_add_price_code", {
+                    p_fair_id: fairId,
+                    p_buying_price: Number(item.buying_price),
+                    p_product_code: item.product_code
+                })
+            );
+        }
+    }
+
     async function chooseFair(id) {
         if (channel) {
             await db.removeChannel(channel);
@@ -441,6 +461,8 @@ if (!fairs.length) {
                     .eq("fair_id", fair.id)
                     .single()
             );
+
+            await syncGlobalPriceCodesToFair(fair.id);
         }
 
         await loadProducts();
