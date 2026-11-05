@@ -177,6 +177,11 @@
             syncLabel.textContent = count
                 ? (navigator.onLine ? `● ${count} pending — retrying` : `● ${count} pending — offline`)
                 : navigator.onLine ? "● Online" : "● Offline";
+            if (count && lastSyncError) {
+                syncLabel.title = "Last sync error: " + lastSyncError;
+            } else {
+                syncLabel.removeAttribute("title");
+            }
         }
         return count;
     }
@@ -192,6 +197,7 @@
         }
 
         syncingSales = true;
+        lastSyncError = "";
         try {
             const pending = await getPendingSales();
             const mine = pending.filter(item => item.entered_by === user.id);
@@ -223,7 +229,8 @@
                 ? lastSyncError.slice(0, 107) + "..."
                 : lastSyncError;
             if ($("entryStatus")) {
-                $("entryStatus").textContent = "Sync pending. Saved on this phone. " + detail;
+                $("entryStatus").textContent = "SYNC ERROR — " + detail +
+                    ". Your pending sales are still saved on this phone. Tap Retry Sync after checking the connection.";
             }
         } finally {
             syncingSales = false;
@@ -850,6 +857,11 @@ if (!fairs.length) {
     // ========================================
     // 9. EMPLOYEE SALES FORM
     // ========================================
+
+    const retrySyncButton = $("retrySync");
+    if (retrySyncButton) {
+        retrySyncButton.onclick = () => syncPendingSales();
+    }
 
     $("saleform").onsubmit = async (e) => {
         e.preventDefault();
