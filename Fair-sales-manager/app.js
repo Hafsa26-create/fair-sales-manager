@@ -166,6 +166,8 @@
         offlineRequest("pendingSales", "readwrite", store => store.delete(id));
 
     let syncingSales = false;
+    let syncRetryTimer = null;
+    let lastSyncError = "";
 
     async function updatePendingStatus() {
         const pending = await getPendingSales();
@@ -173,7 +175,7 @@
         const syncLabel = $("sync");
         if (syncLabel) {
             syncLabel.textContent = count
-                ? `● ${count} pending sync`
+                ? (navigator.onLine ? `● ${count} pending — retrying` : `● ${count} pending — offline`)
                 : navigator.onLine ? "● Online" : "● Offline";
         }
         return count;
@@ -212,9 +214,19 @@
                 msg("Offline sales synced successfully.");
             }
         } catch (error) {
-            console.error("Offline sales sync:", error);
-            if ($("sync")) $("sync").textContent = "● Sync pending";
-            msg("Some sales are still waiting to sync. They remain saved on this device.", true);
+            lastSyncError = error?.message || String(error);
+            console.error("Offline sales sync failed; pending records retained:", error);
+            if ($("sync")) $("sync").textContent = "● Sync pending — retrying";
+            // Keep every pending record in IndexedDB. A later retry can safely
+            // use the same sale UUID without creating a duplicate.
+            if (mine?.length) {
+                const detail = lastSyncError.length > 110
+                    ? lastSyncError.slice(0, 107) + "..."
+                    : lastSyncError;
+                if ($("entryStatus")) {
+                    $("entryStatus").textContent = "Sync pending. Saved on this phone. " + detail;
+                }
+            }
         } finally {
             syncingSales = false;
             try {
@@ -875,6 +887,7 @@ if (!fairs.length) {
                 created_at: new Date().toISOString()
             };
 
+            let queuedForSync = false;
             if (navigator.onLine) {
                 try {
                     await data(
@@ -885,9 +898,11 @@ if (!fairs.length) {
                         throw networkError;
                     }
                     await savePendingSale(saleRecord);
+                    queuedForSync = true;
                 }
             } else {
                 await savePendingSale(saleRecord);
+                queuedForSync = true;
             }
 
             $("entryStatus").textContent =
@@ -903,6 +918,12 @@ if (!fairs.length) {
             msg(pendingCount
                 ? "Sale saved on this device. Waiting to sync."
                 : "Sale saved successfully.");
+
+            // A failed fetch can happen even while navigator.onLine is true;
+            // in that case no new "online" event is guaranteed to fire.
+            if (queuedForSync && navigator.onLine) {
+                setTimeout(() => syncPendingSales(), 2000);
+            }
         } catch (e) {
             msg(e.message, true);
         }
@@ -1224,11 +1245,34 @@ if (!fairs.length) {
             new Date().toISOString().slice(0, 10);
 
         window.addEventListener("online", () => {
-            syncPendingSales();
+            // Browsers may report online before the connection can reach Supabase.
+            // Delay briefly, then retry; the background retry below covers transient failures.
+            setTimeout(() => syncPendingSales(), 1500);
         });
         window.addEventListener("offline", () => {
             updatePendingStatus().catch(console.error);
         });
+        window.addEventListener("focus", () => {
+            if (navigator.onLine) syncPendingSales();
+        });
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden && navigator.onLine) syncPendingSales();
+        });
+
+        // Do not rely on a single "online" event. If it fired too early or was
+        // missed while the app was open, retry pending sales every 15 seconds.
+        if (syncRetryTimer) clearInterval(syncRetryTimer);
+        syncRetryTimer = setInterval(async () => {
+            if (!user || !navigator.onLine || syncingSales) return;
+            try {
+                const pending = await getPendingSales();
+                if (pending.some(item => item.entered_by === user.id)) {
+                    await syncPendingSales();
+                }
+            } catch (error) {
+                console.warn("Background pending-sales check failed:", error);
+            }
+        }, 15000);
 
         db.auth.onAuthStateChange((_e, s) => {
             setTimeout(
