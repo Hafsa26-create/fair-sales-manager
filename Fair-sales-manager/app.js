@@ -426,6 +426,16 @@ if (!fairs.length) {
         }
     }
 
+    // Keep every fair owned by this account aligned with the global code catalog.
+    async function syncGlobalPriceCodesToAllFairs() {
+        if (role !== "owner") return;
+
+        const ownerFairs = fairs.filter(item => item.role === "owner");
+        for (const item of ownerFairs) {
+            await syncGlobalPriceCodesToFair(item.id);
+        }
+    }
+
     async function chooseFair(id) {
         if (channel) {
             await db.removeChannel(channel);
@@ -1065,11 +1075,14 @@ if (!fairs.length) {
                 })
             );
 
+            // Propagate the new global price/code mapping to all existing fairs.
+            await syncGlobalPriceCodesToAllFairs();
+
             e.target.reset();
 
             await loadProducts();
 
-            msg("Product and buying price saved.");
+            msg("Global product code saved and synced across all your fairs.");
         } catch (e) {
             msg(e.message, true);
         }
