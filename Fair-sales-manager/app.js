@@ -75,8 +75,7 @@
 
     function isNetworkError(error) {
         const message = String(error?.message || "").toLowerCase();
-        return !navigator.onLine ||
-            error instanceof TypeError ||
+        return error instanceof TypeError ||
             error?.name === "FetchError" ||
             error?.status === 0 ||
             error?.code === "PGRST000" ||
@@ -112,18 +111,24 @@
                 }
             };
 
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            request.onblocked = () => reject(new Error("Offline storage is busy in another app tab. Close other tabs and retry."));
+            request.onsuccess = () => {
+                const db = request.result;
+                db.onversionchange = () => db.close();
+                resolve(db);
+            };
+            request.onerror = () => reject(request.error || new Error("Could not open offline storage."));
         });
     }
 
     async function offlineRequest(storeName, mode, action) {
         const offlineDB = await openOfflineDB();
         return new Promise((resolve, reject) => {
-            const tx = offlineDB.transaction(storeName, mode);
-            const store = tx.objectStore(storeName);
+            let tx;
             let request;
             try {
+                tx = offlineDB.transaction(storeName, mode);
+                const store = tx.objectStore(storeName);
                 request = action(store);
             } catch (error) {
                 offlineDB.close();
@@ -297,13 +302,17 @@
                 role: roles.get(f.id)
             }));
             const previous = await getSnapshot(user.id);
+            const selectedFairId = fairs.some(item => item.id === previous?.selectedFairId)
+                ? previous.selectedFairId
+                : fairs[0]?.id || null;
             await saveSnapshot({
                 userId: user.id,
                 fairs,
-                selectedFairId: previous?.selectedFairId || fairs[0]?.id || null,
+                selectedFairId,
                 productsByFair: previous?.productsByFair || {}
             });
         } catch (networkError) {
+            if (!isNetworkError(networkError) && navigator.onLine) throw networkError;
             const snapshot = await getSnapshot(user.id);
             if (!snapshot?.fairs?.length) throw networkError;
             fairs = snapshot.fairs;
@@ -361,11 +370,13 @@ if (!fairs.length) {
 
     return;
 }
-        const f = fairs[0];
+        const snapshot = await getSnapshot(user.id);
+        const selectedFairId = fairs.some(item => item.id === snapshot?.selectedFairId)
+            ? snapshot.selectedFairId
+            : fairs[0].id;
 
-        $("fairSelect").value = f.id;
-
-        await chooseFair(f.id);
+        $("fairSelect").value = selectedFairId;
+        await chooseFair(selectedFairId);
     }
 
     function toggle() {
@@ -405,6 +416,16 @@ if (!fairs.length) {
         role = fair?.role || null;
         finance = null;
         products = [];
+
+        if (fair && user) {
+            const snapshot = await getSnapshot(user.id) || {
+                userId: user.id, fairs, productsByFair: {}
+            };
+            snapshot.fairs = fairs;
+            snapshot.selectedFairId = fair.id;
+            snapshot.productsByFair = snapshot.productsByFair || {};
+            await saveSnapshot(snapshot);
+        }
 
         toggle();
 
@@ -455,6 +476,7 @@ if (!fairs.length) {
             snapshot.fairs = fairs;
             await saveSnapshot(snapshot);
         } catch (networkError) {
+            if (!isNetworkError(networkError) && navigator.onLine) throw networkError;
             const snapshot = await getSnapshot(user.id);
             const cached = snapshot?.productsByFair?.[fair.id];
             if (!cached?.length) throw networkError;
