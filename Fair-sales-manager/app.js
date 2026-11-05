@@ -219,13 +219,11 @@
             if ($("sync")) $("sync").textContent = "● Sync pending — retrying";
             // Keep every pending record in IndexedDB. A later retry can safely
             // use the same sale UUID without creating a duplicate.
-            if (mine?.length) {
-                const detail = lastSyncError.length > 110
-                    ? lastSyncError.slice(0, 107) + "..."
-                    : lastSyncError;
-                if ($("entryStatus")) {
-                    $("entryStatus").textContent = "Sync pending. Saved on this phone. " + detail;
-                }
+            const detail = lastSyncError.length > 110
+                ? lastSyncError.slice(0, 107) + "..."
+                : lastSyncError;
+            if ($("entryStatus")) {
+                $("entryStatus").textContent = "Sync pending. Saved on this phone. " + detail;
             }
         } finally {
             syncingSales = false;
