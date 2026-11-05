@@ -1076,6 +1076,37 @@ if (!fairs.length) {
     };
 
 
+    $("buying").addEventListener("change", async () => {
+        const rawPrice = $("buying").value;
+        if (rawPrice === "" || role !== "owner") return;
+
+        try {
+            const matches = await data(
+                db.from("fair_sales_price_codes")
+                    .select("product_code")
+                    .eq("buying_price", Number(rawPrice))
+                    .limit(1)
+            );
+            if (matches.length) {
+                $("code").value = matches[0].product_code;
+                $("code").readOnly = true;
+                msg("Existing global code applied: " + matches[0].product_code);
+            } else {
+                $("code").readOnly = false;
+            }
+        } catch (error) {
+            console.warn("Could not check global price catalog:", error);
+            $("code").readOnly = false;
+        }
+    });
+
+    $("buying").addEventListener("input", () => {
+        if (!$("buying").value) {
+            $("code").value = "";
+            $("code").readOnly = false;
+        }
+    });
+
     // ========================================
     // 12. ADD EMPLOYEE FORM
     // ========================================
