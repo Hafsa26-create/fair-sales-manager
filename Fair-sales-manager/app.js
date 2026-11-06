@@ -165,6 +165,26 @@
     const removePendingSale = (id) =>
         offlineRequest("pendingSales", "readwrite", store => store.delete(id));
 
+    // After a successful online fair/membership refresh, discard this user's
+    // queued sales only when their fair no longer exists in their assignments.
+    // This cleans up local test data for deleted fairs without touching sales
+    // belonging to any currently assigned fair.
+    async function removePendingSalesForDeletedFairs(validFairIds) {
+        if (!user || !navigator.onLine) return 0;
+
+        const validIds = new Set(validFairIds);
+        const pending = await getPendingSales();
+        const stale = pending.filter(item =>
+            item.entered_by === user.id && !validIds.has(item.fair_id)
+        );
+
+        for (const sale of stale) {
+            await removePendingSale(sale.id);
+        }
+
+        return stale.length;
+    }
+
     let syncingSales = false;
     let syncRetryTimer = null;
     let lastSyncError = "";
@@ -341,6 +361,9 @@
                 ...f,
                 role: roles.get(f.id)
             }));
+            // Only purge stale local queue items after a successful online
+            // refresh from the server, never from an offline cached snapshot.
+            await removePendingSalesForDeletedFairs(fairs.map(item => item.id));
             const previous = await getSnapshot(user.id);
             const selectedFairId = fairs.some(item => item.id === previous?.selectedFairId)
                 ? previous.selectedFairId
