@@ -105,6 +105,7 @@
             Product category
             <select id="productSelect" required></select>
           </label>
+          <small id="defaultPriceHint" class="muted">Choose a product to see its default selling price.</small>
 
           <div class="grid">
             <label>
@@ -120,14 +121,14 @@
             </label>
 
             <label>
-              Price per piece (৳)
+              Actual selling price per piece (৳)
               <input
                 id="price"
                 type="number"
                 min="0"
                 step=".01"
                 required
-                placeholder="100"
+                placeholder="70"
               >
             </label>
           </div>
@@ -304,7 +305,7 @@
 
         <div class="card">
           <h2>Product categories</h2>
-          <p class="muted">Buying price is visible only to you. Product codes are shared across all your fairs. The same buying price always uses the same code; an existing code is filled automatically. Add a new code only when you introduce a new buying price, and it will be added to all your fairs.</p>
+          <p class="muted">Buying and default selling prices are visible only to you here. Product codes and default selling prices are shared across all your fairs. Employees see the default selling price and can enter the actual price after bargaining.</p>
 
           <form id="productform" class="grid">
             <label>
@@ -320,6 +321,18 @@
                 min="0"
                 step=".01"
                 required
+              >
+            </label>
+
+            <label class="span">
+              Default selling price (৳)
+              <input
+                id="defaultSelling"
+                type="number"
+                min="0"
+                step=".01"
+                required
+                placeholder="70"
               >
             </label>
 
