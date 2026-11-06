@@ -1225,6 +1225,22 @@ if (!fairs.length) {
     // 11. PRODUCT FORM
     // ========================================
 
+    // Live per-piece profit estimate based on the owner's two entered prices.
+    function updateExpectedProfit() {
+        const buyingValue = $("buying").value;
+        const sellingValue = $("defaultSelling").value;
+
+        if (buyingValue === "" || sellingValue === "") {
+            $("expectedProfit").value = "";
+            return;
+        }
+
+        const profit = Number(sellingValue) - Number(buyingValue);
+        $("expectedProfit").value = money(profit);
+    }
+
+    $("defaultSelling").addEventListener("input", updateExpectedProfit);
+
     $("productform").onsubmit = async (e) => {
         e.preventDefault();
 
@@ -1263,6 +1279,7 @@ if (!fairs.length) {
             await syncGlobalPriceCodesToAllFairs();
 
             e.target.reset();
+            updateExpectedProfit();
 
             await loadProducts();
 
@@ -1288,9 +1305,12 @@ if (!fairs.length) {
                 $("code").value = matches[0].product_code;
                 $("code").readOnly = true;
                 $("defaultSelling").value = matches[0].default_selling_price ?? "";
+                updateExpectedProfit();
                 msg("Existing global code applied: " + matches[0].product_code);
             } else {
                 $("code").readOnly = false;
+                $("defaultSelling").value = "";
+                updateExpectedProfit();
             }
         } catch (error) {
             console.warn("Could not check global price catalog:", error);
@@ -1304,6 +1324,7 @@ if (!fairs.length) {
             $("code").readOnly = false;
             $("defaultSelling").value = "";
         }
+        updateExpectedProfit();
     });
 
     $("productSelect").addEventListener("change", () => {
