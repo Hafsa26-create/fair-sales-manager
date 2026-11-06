@@ -105,9 +105,30 @@
             Product category
             <select id="productSelect" required></select>
           </label>
-          <small id="defaultPriceHint" class="muted">Choose a product to see its default selling price.</small>
-
           <div class="grid">
+            <label>
+              Default selling price per piece (৳)
+              <input
+                id="defaultPrice"
+                type="number"
+                step=".01"
+                readonly
+                placeholder="Select a product code"
+              >
+            </label>
+
+            <label>
+              Actual selling price per piece (৳)
+              <input
+                id="price"
+                type="number"
+                min="0"
+                step=".01"
+                required
+                placeholder="Enter actual price"
+              >
+            </label>
+
             <label>
               Quantity (pcs)
               <input
@@ -120,17 +141,6 @@
               >
             </label>
 
-            <label>
-              Actual selling price per piece (৳)
-              <input
-                id="price"
-                type="number"
-                min="0"
-                step=".01"
-                required
-                placeholder="70"
-              >
-            </label>
           </div>
 
           <div class="total">
