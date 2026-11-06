@@ -313,11 +313,20 @@ small {
     display: flex;
     justify-content: space-between;
     padding: 12px;
-    background: #47292f;
-    color: var(--ink);
     border-radius: 10px;
     margin-top: 8px;
     font-size: 13px;
+}
+
+.product-row {
+    background: #FCE4EC;
+    color: #512B3A;
+    border: 1px solid #F5C9D8;
+}
+
+.expense-row {
+    background: #47292f;
+    color: var(--ink);
 }
 
 .sales-table {
