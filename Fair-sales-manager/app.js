@@ -1249,22 +1249,17 @@ if (!fairs.length) {
                 throw Error("Enter a valid default selling price of zero or more.");
             }
 
+            // Save the code and default selling price atomically in one database transaction.
             await data(
-                db.rpc("fair_sales_add_price_code", {
+                db.rpc("fair_sales_save_price_code", {
                     p_fair_id: fair.id,
                     p_buying_price: buyingPrice,
-                    p_product_code: productCode
-                })
-            );
-
-            await data(
-                db.rpc("fair_sales_set_price_code_selling_price", {
                     p_product_code: productCode,
-                    p_selling_price: sellingPrice
+                    p_default_selling_price: sellingPrice
                 })
             );
 
-            // Propagate the new global price/code mapping to all existing fairs.
+            // Propagate the saved global mapping to every other fair owned by this account.
             await syncGlobalPriceCodesToAllFairs();
 
             e.target.reset();
