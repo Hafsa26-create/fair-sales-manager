@@ -482,18 +482,26 @@ if (!fairs.length) {
 
         const catalog = await data(
             db.from("fair_sales_price_codes")
-                .select("product_code,buying_price")
+                .select("product_code,buying_price,default_selling_price")
                 .order("product_code")
         );
 
         for (const item of catalog) {
-            await data(
+            const productId = await data(
                 db.rpc("fair_sales_add_price_code", {
                     p_fair_id: fairId,
                     p_buying_price: Number(item.buying_price),
                     p_product_code: item.product_code
                 })
             );
+            if (item.default_selling_price !== null && item.default_selling_price !== undefined) {
+                await data(
+                    db.from("fair_sales_products")
+                        .update({ default_selling_price: Number(item.default_selling_price) })
+                        .eq("id", productId)
+                        .eq("fair_id", fairId)
+                );
+            }
         }
     }
 
@@ -605,7 +613,7 @@ if (!fairs.length) {
         try {
             products = await data(
                 db.from("fair_sales_products")
-                    .select("id,fair_id,product_code,active")
+                    .select("id,fair_id,product_code,active,default_selling_price")
                     .eq("fair_id", fair.id)
                     .eq("active", true)
                     .order("product_code")
@@ -614,8 +622,8 @@ if (!fairs.length) {
                 userId: user.id, fairs, productsByFair: {}
             };
             snapshot.productsByFair = snapshot.productsByFair || {};
-            snapshot.productsByFair[fair.id] = products.map(({id,fair_id,product_code,active}) => ({
-                id, fair_id, product_code, active
+            snapshot.productsByFair[fair.id] = products.map(({id,fair_id,product_code,active,default_selling_price}) => ({
+                id, fair_id, product_code, active, default_selling_price
             }));
             snapshot.selectedFairId = fair.id;
             snapshot.fairs = fairs;
@@ -655,15 +663,9 @@ if (!fairs.length) {
                         <div class="product-row">
                             <span>
                                 <b>${esc(p.product_code)}</b><br>
-                                <small>Buying price / piece</small>
+                                <small>Buying: ${p.buying_price === undefined ? "Not set" : money(p.buying_price)}</small>
                             </span>
-                            <b>
-                                ${
-                                    p.buying_price === undefined
-                                        ? "Not set"
-                                        : money(p.buying_price)
-                                }
-                            </b>
+                            <b>Default selling: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</b>
                         </div>
                     `
                 )
@@ -801,7 +803,8 @@ if (!fairs.length) {
                                 <th>Time</th>
                                 <th>Product</th>
                                 <th>Qty</th>
-                                <th>Price</th>
+                                <th>Default price</th>
+                                <th>Actual price</th>
                                 <th>Sales</th>
                                 <th>Cost</th>
                                 <th>Margin</th>
@@ -816,6 +819,7 @@ if (!fairs.length) {
                                     const sale =
                                         Number(s.quantity) *
                                         Number(s.unit_selling_price);
+                                    const defaultPrice = s.default_unit_selling_price;
 
                                     const c =
                                         Number(s.quantity) *
@@ -826,6 +830,7 @@ if (!fairs.length) {
                                             <td>${esc(new Date(s.created_at).toLocaleString())}</td>
                                             <td>${esc(p?.product_code || "Product")}</td>
                                             <td>${s.quantity}</td>
+                                            <td>${defaultPrice === null || defaultPrice === undefined ? "—" : money(defaultPrice)}</td>
                                             <td>${money(s.unit_selling_price)}</td>
                                             <td>${money(sale)}</td>
                                             <td>${money(c)}</td>
@@ -1017,11 +1022,18 @@ if (!fairs.length) {
                 );
             }
 
+            const selectedProduct = products.find((p) => p.id === product_id);
+            const default_unit_selling_price =
+                selectedProduct?.default_selling_price === null || selectedProduct?.default_selling_price === undefined
+                    ? null
+                    : Number(selectedProduct.default_selling_price);
+
             const saleRecord = {
                 id: crypto.randomUUID(),
                 fair_id: fair.id,
                 product_id,
                 quantity,
+                default_unit_selling_price,
                 unit_selling_price,
                 entered_by: user.id,
                 created_at: new Date().toISOString()
@@ -1052,6 +1064,8 @@ if (!fairs.length) {
 
             $("qty").value = 1;
             $("price").value = "";
+            $("productSelect").value = "";
+            $("defaultPriceHint").textContent = "Choose a product to see its default selling price.";
             $("total").textContent = money(0);
 
             await refreshEmployeeItemsSold();
@@ -1230,11 +1244,23 @@ if (!fairs.length) {
                 throw Error("Enter a valid buying price of zero or more.");
             }
 
+            const sellingPrice = Number($("defaultSelling").value);
+            if (!Number.isFinite(sellingPrice) || sellingPrice < 0 || $("defaultSelling").value === "") {
+                throw Error("Enter a valid default selling price of zero or more.");
+            }
+
             await data(
                 db.rpc("fair_sales_add_price_code", {
                     p_fair_id: fair.id,
                     p_buying_price: buyingPrice,
                     p_product_code: productCode
+                })
+            );
+
+            await data(
+                db.rpc("fair_sales_set_price_code_selling_price", {
+                    p_product_code: productCode,
+                    p_selling_price: sellingPrice
                 })
             );
 
@@ -1259,13 +1285,14 @@ if (!fairs.length) {
         try {
             const matches = await data(
                 db.from("fair_sales_price_codes")
-                    .select("product_code")
+                    .select("product_code,default_selling_price")
                     .eq("buying_price", Number(rawPrice))
                     .limit(1)
             );
             if (matches.length) {
                 $("code").value = matches[0].product_code;
                 $("code").readOnly = true;
+                $("defaultSelling").value = matches[0].default_selling_price ?? "";
                 msg("Existing global code applied: " + matches[0].product_code);
             } else {
                 $("code").readOnly = false;
@@ -1280,7 +1307,18 @@ if (!fairs.length) {
         if (!$("buying").value) {
             $("code").value = "";
             $("code").readOnly = false;
+            $("defaultSelling").value = "";
         }
+    });
+
+    $("productSelect").addEventListener("change", () => {
+        const selected = products.find((p) => p.id === $("productSelect").value);
+        $("price").value = selected?.default_selling_price ?? "";
+        $("defaultPriceHint").textContent =
+            selected?.default_selling_price === null || selected?.default_selling_price === undefined
+                ? "Default selling price not set yet. Ask the owner to set it."
+                : "Default selling price: " + money(selected.default_selling_price) + " (you can adjust the actual price).";
+        updateTotal();
     });
 
     // ========================================
