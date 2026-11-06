@@ -188,6 +188,7 @@
     let syncingSales = false;
     let syncRetryTimer = null;
     let lastSyncError = "";
+    let lastCleanedPendingCount = 0;
 
     async function updatePendingStatus() {
         const pending = await getPendingSales();
@@ -363,7 +364,7 @@
             }));
             // Only purge stale local queue items after a successful online
             // refresh from the server, never from an offline cached snapshot.
-            await removePendingSalesForDeletedFairs(fairs.map(item => item.id));
+            lastCleanedPendingCount = await removePendingSalesForDeletedFairs(fairs.map(item => item.id));
             const previous = await getSnapshot(user.id);
             const selectedFairId = fairs.some(item => item.id === previous?.selectedFairId)
                 ? previous.selectedFairId
@@ -907,6 +908,40 @@ if (!fairs.length) {
     const retrySyncButton = $("retrySync");
     if (retrySyncButton) {
         retrySyncButton.onclick = () => syncPendingSales();
+    }
+
+    const cleanupPendingButton = $("cleanupPending");
+    if (cleanupPendingButton) {
+        cleanupPendingButton.onclick = async () => {
+            if (cleanupPendingButton.disabled) return;
+            cleanupPendingButton.disabled = true;
+            cleanupPendingButton.textContent = "Checking fairs...";
+            try {
+                // Refresh authoritative online fair assignments, then remove
+                // only queued sales whose fair is no longer assigned to user.
+                await loadFairs();
+                const removed = lastCleanedPendingCount;
+                await updatePendingStatus();
+                if ($("entryStatus")) {
+                    $("entryStatus").textContent = removed
+                        ? removed + " pending sale(s) from deleted/unassigned fairs removed. Current-fair sales were kept."
+                        : "No pending sales from deleted/unassigned fairs found. Current-fair sales were kept.";
+                }
+                msg(removed
+                    ? removed + " old pending sale(s) cleaned up."
+                    : "No deleted-fair pending sales to clean.");
+                await syncPendingSales();
+            } catch (error) {
+                console.error("Pending sale cleanup failed:", error);
+                if ($("entryStatus")) {
+                    $("entryStatus").textContent = "Cleanup could not finish: " + (error.message || String(error));
+                }
+                msg("Could not check fair assignments. Pending sales were not intentionally cleared.", true);
+            } finally {
+                cleanupPendingButton.disabled = false;
+                cleanupPendingButton.textContent = "Clean deleted-fair sales";
+            }
+        };
     }
 
     $("saleform").onsubmit = async (e) => {
