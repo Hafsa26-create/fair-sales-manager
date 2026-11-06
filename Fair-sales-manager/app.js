@@ -229,11 +229,16 @@
             // not block valid sales from a different, currently assigned fair.
             for (const sale of mine) {
                 try {
+                    // Pending records are new sales. Use INSERT rather than UPSERT:
+                    // the employee has no UPDATE policy on sales entries, and an
+                    // UPSERT can enter the UPDATE/RLS path on conflict.
                     const { error } = await db
                         .from("fair_sales_entries")
-                        .upsert(sale, { onConflict: "id", ignoreDuplicates: true });
+                        .insert(sale);
 
-                    if (error) throw error;
+                    // A duplicate UUID means an earlier attempt reached the server
+                    // but its response was lost. Treat that idempotently as synced.
+                    if (error && error.code !== "23505") throw error;
                     await removePendingSale(sale.id);
                     syncedCount += 1;
                 } catch (saleError) {
