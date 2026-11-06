@@ -201,30 +201,53 @@
         try {
             const pending = await getPendingSales();
             const mine = pending.filter(item => item.entered_by === user.id);
+            let syncedCount = 0;
+            const failedSales = [];
 
+            // Process each queued sale independently. One stale/deleted fair must
+            // not block valid sales from a different, currently assigned fair.
             for (const sale of mine) {
-                const { error } = await db
-                    .from("fair_sales_entries")
-                    .upsert(sale, { onConflict: "id", ignoreDuplicates: true });
+                try {
+                    const { error } = await db
+                        .from("fair_sales_entries")
+                        .upsert(sale, { onConflict: "id", ignoreDuplicates: true });
 
-                if (error) throw error;
-                await removePendingSale(sale.id);
+                    if (error) throw error;
+                    await removePendingSale(sale.id);
+                    syncedCount += 1;
+                } catch (saleError) {
+                    failedSales.push({ sale, error: saleError });
+                    console.warn("Pending sale could not sync; keeping it on this device:", sale.id, saleError);
+                }
+            }
+
+            if (syncedCount && fair && role === "owner") {
+                await report();
+            }
+
+            if (failedSales.length) {
+                lastSyncError = failedSales[0].error?.message || String(failedSales[0].error);
+                const detail = lastSyncError.length > 110
+                    ? lastSyncError.slice(0, 107) + "..."
+                    : lastSyncError;
+                if ($("entryStatus")) {
+                    $("entryStatus").textContent =
+                        (syncedCount ? syncedCount + " sale(s) synced. " : "") +
+                        failedSales.length + " sale(s) still pending. First error: " + detail +
+                        ". Failed sales remain saved on this phone.";
+                }
+                if ($("sync")) $("sync").textContent = "● Some sales still pending";
+            } else if (syncedCount) {
+                lastSyncError = "";
+                if ($("entryStatus")) $("entryStatus").textContent = "All pending sales synced.";
+                msg("Offline sales synced successfully.");
             }
 
             await updatePendingStatus();
-            if (mine.length && fair && role === "owner") {
-                await report();
-            }
-            if (mine.length) {
-                $("entryStatus").textContent = "All pending sales synced.";
-                msg("Offline sales synced successfully.");
-            }
         } catch (error) {
             lastSyncError = error?.message || String(error);
             console.error("Offline sales sync failed; pending records retained:", error);
             if ($("sync")) $("sync").textContent = "● Sync pending — retrying";
-            // Keep every pending record in IndexedDB. A later retry can safely
-            // use the same sale UUID without creating a duplicate.
             const detail = lastSyncError.length > 110
                 ? lastSyncError.slice(0, 107) + "..."
                 : lastSyncError;
