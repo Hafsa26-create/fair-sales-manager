@@ -1064,8 +1064,8 @@ if (!fairs.length) {
 
             $("qty").value = 1;
             $("price").value = "";
+            $("defaultPrice").value = "";
             $("productSelect").value = "";
-            $("defaultPriceHint").textContent = "Choose a product to see its default selling price.";
             $("total").textContent = money(0);
 
             await refreshEmployeeItemsSold();
@@ -1313,11 +1313,12 @@ if (!fairs.length) {
 
     $("productSelect").addEventListener("change", () => {
         const selected = products.find((p) => p.id === $("productSelect").value);
-        $("price").value = selected?.default_selling_price ?? "";
-        $("defaultPriceHint").textContent =
-            selected?.default_selling_price === null || selected?.default_selling_price === undefined
-                ? "Default selling price not set yet. Ask the owner to set it."
-                : "Default selling price: " + money(selected.default_selling_price) + " (you can adjust the actual price).";
+        const defaultPrice = selected?.default_selling_price;
+        $("defaultPrice").value =
+            defaultPrice === null || defaultPrice === undefined ? "" : Number(defaultPrice);
+        // Start actual price at the owner's default; employee can edit it after bargaining.
+        $("price").value =
+            defaultPrice === null || defaultPrice === undefined ? "" : Number(defaultPrice);
         updateTotal();
     });
 
