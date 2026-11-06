@@ -1,4 +1,4 @@
-const CACHE = "fair-sales-static-v8";
+const CACHE = "fair-sales-static-v9";
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
 const FILES = [
