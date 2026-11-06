@@ -249,6 +249,8 @@
 
             if (syncedCount && fair && role === "owner") {
                 await report();
+            } else if (syncedCount && fair && role === "employee") {
+                await refreshEmployeeItemsSold();
             }
 
             if (failedSales.length) {
@@ -546,6 +548,10 @@ if (!fairs.length) {
 
         await loadProducts();
 
+        if (role === "employee") {
+            await refreshEmployeeItemsSold();
+        }
+
         if (role === "owner") {
             await report();
             subscribe();
@@ -556,6 +562,44 @@ if (!fairs.length) {
     // ========================================
     // 5. PRODUCTS & BUYING PRICES
     // ========================================
+
+    async function refreshEmployeeItemsSold() {
+        if (role !== "employee" || !fair || !user) return;
+
+        let syncedItems = 0;
+        let hasFreshServerCount = false;
+
+        if (navigator.onLine) {
+            try {
+                syncedItems = Number(await data(
+                    db.rpc("fair_sales_my_items_sold", { p_fair_id: fair.id })
+                )) || 0;
+                hasFreshServerCount = true;
+
+                const snapshot = await getSnapshot(user.id) || {
+                    userId: user.id, fairs, productsByFair: {}
+                };
+                snapshot.employeeItemsSoldByFair = snapshot.employeeItemsSoldByFair || {};
+                snapshot.employeeItemsSoldByFair[fair.id] = syncedItems;
+                await saveSnapshot(snapshot);
+            } catch (error) {
+                console.warn("Could not refresh employee item count:", error);
+            }
+        }
+
+        if (!hasFreshServerCount) {
+            const snapshot = await getSnapshot(user.id);
+            syncedItems = Number(snapshot?.employeeItemsSoldByFair?.[fair.id]) || 0;
+        }
+
+        const pending = await getPendingSales();
+        const pendingItems = pending
+            .filter(item => item.entered_by === user.id && item.fair_id === fair.id)
+            .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+
+        const count = $("employeeItemsTotal");
+        if (count) count.textContent = syncedItems + pendingItems;
+    }
 
     async function loadProducts() {
         try {
@@ -1009,6 +1053,8 @@ if (!fairs.length) {
             $("qty").value = 1;
             $("price").value = "";
             $("total").textContent = money(0);
+
+            await refreshEmployeeItemsSold();
 
             const pendingCount = await updatePendingStatus();
             msg(pendingCount
