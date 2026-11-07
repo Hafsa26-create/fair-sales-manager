@@ -311,11 +311,43 @@ small {
 .product-row,
 .expense-row {
     display: flex;
+    align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 12px;
     border-radius: 10px;
     margin-top: 8px;
     font-size: 13px;
+    background: #FCE4EC;
+    color: #512B3A;
+    border: 1px solid #F5C9D8;
+}
+
+.expense-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.expense-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.expense-delete {
+    border: 1px solid #D88BA6;
+    border-radius: 8px;
+    padding: 7px 10px;
+    background: #FFFFFF;
+    color: #8A294B;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.expense-delete:disabled {
+    opacity: .6;
+    cursor: wait;
 }
 
 .product-row {
