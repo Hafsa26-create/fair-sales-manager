@@ -853,17 +853,65 @@ if (!fairs.length) {
             .map(
                 (e) => `
                     <div class="expense-row">
-                        <span>
+                        <span class="expense-details">
                             <b>${esc(e.description)}</b><br>
                             <small>${esc(day(e.expense_date))}</small>
                         </span>
-                        <b>${money(e.amount)}</b>
+                        <span class="expense-actions">
+                            <b>${money(e.amount)}</b>
+                            <button
+                                type="button"
+                                class="expense-delete"
+                                data-expense-id="${esc(e.id)}"
+                                aria-label="Delete ${esc(e.description)} expense"
+                            >Delete</button>
+                        </span>
                     </div>
                 `
             )
             .join("") ||
             '<p class="muted">No additional expenses yet.</p>';
     }
+
+    $("expenseList").addEventListener("click", async (event) => {
+        const button = event.target.closest(".expense-delete");
+        if (!button) return;
+
+        if (role !== "owner" || !fair) {
+            msg("Only the owner can delete expenses.", true);
+            return;
+        }
+
+        const expenseId = button.dataset.expenseId;
+        const selectedExpense = expenses.find((item) => item.id === expenseId);
+        if (!selectedExpense) {
+            msg("Expense not found. Refresh the report and try again.", true);
+            return;
+        }
+
+        if (!window.confirm(`Delete "${selectedExpense.description}" expense (${money(selectedExpense.amount)})? This cannot be undone.`)) {
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Deleting...";
+
+        try {
+            await data(
+                db.from("fair_sales_expenses")
+                    .delete()
+                    .eq("id", expenseId)
+                    .eq("fair_id", fair.id)
+            );
+
+            await report();
+            msg("Expense deleted.");
+        } catch (error) {
+            button.disabled = false;
+            button.textContent = "Delete";
+            msg(error.message || "Could not delete this expense.", true);
+        }
+    });
 
 
     // ========================================
