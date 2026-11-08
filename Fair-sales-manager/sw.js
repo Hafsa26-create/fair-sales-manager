@@ -1,4 +1,4 @@
-const CACHE = "fair-sales-static-v31";
+const CACHE = "fair-sales-static-v32";
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
 const FILES = [
@@ -71,9 +71,15 @@ self.addEventListener("fetch", (event) => {
         fetch(request)
             .then((response) => {
                 if (response.ok) {
-                    caches.open(CACHE).then((cache) =>
-                        cache.put(request, response.clone())
-                    );
+                    // Clone synchronously before returning the original response.
+                    try {
+                        const cacheCopy = response.clone();
+                        caches.open(CACHE)
+                            .then((cache) => cache.put(request, cacheCopy))
+                            .catch((error) => console.warn("Could not cache response:", error));
+                    } catch (error) {
+                        console.warn("Could not clone response for cache:", error);
+                    }
                 }
                 return response;
             })
