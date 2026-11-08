@@ -1,4 +1,4 @@
-const CACHE = "fair-sales-static-v32";
+const CACHE = "fair-sales-static-v33";
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
 const FILES = [
@@ -68,27 +68,12 @@ self.addEventListener("fetch", (event) => {
     if (url.origin !== self.location.origin) return;
 
     event.respondWith(
-        fetch(request)
-            .then((response) => {
-                if (response.ok) {
-                    // Clone synchronously before returning the original response.
-                    try {
-                        const cacheCopy = response.clone();
-                        caches.open(CACHE)
-                            .then((cache) => cache.put(request, cacheCopy))
-                            .catch((error) => console.warn("Could not cache response:", error));
-                    } catch (error) {
-                        console.warn("Could not clone response for cache:", error);
-                    }
-                }
-                return response;
-            })
-            .catch(() => caches.match(request).then((cached) => {
-                if (cached) return cached;
-                if (request.mode === "navigate") {
-                    return caches.match("./index.html");
-                }
-                return Response.error();
-            }))
+        fetch(request).catch(() => caches.match(request).then((cached) => {
+            if (cached) return cached;
+            if (request.mode === "navigate") {
+                return caches.match("./index.html");
+            }
+            return Response.error();
+        }))
     );
 });
