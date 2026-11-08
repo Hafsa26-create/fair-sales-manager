@@ -21,6 +21,8 @@
     let products = [];
     let sales = [];
     let expenses = [];
+    let globalCatalog = [];
+    let globalInventory = [];
     let salesPage = 0;
     let expensesPage = 0;
     const REPORT_PAGE_SIZE = 50;
@@ -567,6 +569,7 @@ if (!fairs.length) {
 
         if (role === "owner") {
             await report();
+            await loadGlobalInventory();
             subscribe();
         }
     }
@@ -687,6 +690,234 @@ if (!fairs.length) {
                 )
                 .join("");
     }
+
+
+
+    // ========================================
+    // GLOBAL PURCHASES, STOCK & PERSONAL SALES
+    // ========================================
+
+    function fillGlobalProductSelect(id) {
+        const select = $(id);
+        if (!select) return;
+        select.innerHTML = '<option value="">Choose product code</option>' +
+            globalCatalog.map(item =>
+                `<option value="${esc(item.product_code)}">${esc(item.product_code)} — Buy ${money(item.buying_price)}</option>`
+            ).join("");
+    }
+
+    function updatePurchasePreview() {
+        const item = globalCatalog.find(x => x.product_code === $("purchaseCode").value);
+        $("purchaseUnitCost").value = item ? money(item.buying_price) : "";
+        $("purchaseTotal").textContent = money(
+            (item ? Number(item.buying_price) : 0) * Math.max(0, Number($("purchaseQty").value) || 0)
+        );
+    }
+
+    function updatePersonalPreview() {
+        const item = globalCatalog.find(x => x.product_code === $("personalCode").value);
+        const qty = Math.max(0, Number($("personalQty").value) || 0);
+        const price = Math.max(0, Number($("personalPrice").value) || 0);
+        const cost = item ? Number(item.buying_price) : 0;
+        const revenue = qty * price;
+        const profit = revenue - qty * cost;
+        $("personalUnitCost").value = item ? money(cost) : "";
+        $("personalRevenue").textContent = money(revenue);
+        $("personalProfit").textContent = money(profit);
+        $("personalMargin").textContent = revenue > 0 ? (profit / revenue * 100).toFixed(1) + "%" : "0%";
+    }
+
+    function renderGlobalInventory() {
+        const rows = globalInventory || [];
+        const totalStockValue = rows.reduce((sum, row) => sum + Number(row.stock_value || 0), 0);
+        const totalAvailable = rows.reduce((sum, row) => sum + Number(row.available_quantity || 0), 0);
+        const totalPurchased = rows.reduce((sum, row) => sum + Number(row.purchased_quantity || 0), 0);
+        const totalPersonalProfit = rows.reduce((sum, row) => sum + Number(row.personal_gross_profit || 0), 0);
+        const totalPersonalRevenue = rows.reduce((sum, row) => sum + Number(row.personal_revenue || 0), 0);
+        const totalCombinedProfit = rows.reduce((sum, row) => sum + Number(row.combined_gross_profit || 0), 0);
+        const totalCombinedRevenue = rows.reduce((sum, row) => sum + Number(row.combined_revenue || 0), 0);
+
+        $("stockSummary").innerHTML = `
+            <div class="report">
+                <div>Available stock<b>${totalAvailable} pcs</b></div>
+                <div>Stock investment<b>${money(totalStockValue)}</b></div>
+                <div>Purchased items<b>${totalPurchased} pcs</b></div>
+                <div>Personal sales<b>${money(totalPersonalRevenue)}</b></div>
+            </div>
+            <div class="report">
+                <div>Personal gross profit<b>${money(totalPersonalProfit)}</b></div>
+                <div>Personal profit margin<b>${totalPersonalRevenue > 0 ? (totalPersonalProfit / totalPersonalRevenue * 100).toFixed(1) : "0.0"}%</b></div>
+                <div>Combined gross profit<b>${money(totalCombinedProfit)}</b></div>
+                <div>Combined revenue<b>${money(totalCombinedRevenue)}</b></div>
+            </div>
+        `;
+
+        $("inventoryList").innerHTML = rows.length ? `
+            <div style="overflow:auto">
+                <table class="sales-table">
+                    <thead><tr><th>Code</th><th>Buy price</th><th>Purchased</th><th>Fair sold</th><th>Personal sold</th><th>Adjustment</th><th>Available</th><th>Stock value</th></tr></thead>
+                    <tbody>${rows.map(row => `<tr>
+                        <td><b>${esc(row.product_code)}</b></td>
+                        <td>${money(row.buying_price)}</td>
+                        <td>${row.purchased_quantity}</td>
+                        <td>${row.fair_sold_quantity}</td>
+                        <td>${row.personal_sold_quantity}</td>
+                        <td>${row.adjusted_quantity}</td>
+                        <td><b>${row.available_quantity}</b></td>
+                        <td>${money(row.stock_value)}</td>
+                    </tr>`).join("")}</tbody>
+                </table>
+            </div>
+        ` : '<p class="muted">No global product codes found. Add a product code first.</p>';
+
+        $("purchaseHistory").innerHTML = purchaseHistoryRows.length ? purchaseHistoryRows.map(row => `
+            <div class="product-row">
+                <span><b>${esc(row.product_code)}</b><br><small>${esc(day(row.purchase_date))} · ${row.quantity} pcs × ${money(row.unit_buying_price)}</small>${row.note ? `<br><small>${esc(row.note)}</small>` : ""}</span>
+                <b>${money(Number(row.quantity) * Number(row.unit_buying_price))}</b>
+            </div>`).join("") : '<p class="muted">No purchase entries yet.</p>';
+
+        $("personalHistory").innerHTML = personalHistoryRows.length ? personalHistoryRows.map(row => {
+            const revenue = Number(row.quantity) * Number(row.unit_selling_price);
+            const cost = Number(row.quantity) * Number(row.unit_buying_price);
+            const profit = revenue - cost;
+            const margin = revenue > 0 ? (profit / revenue * 100).toFixed(1) : "0.0";
+            return `<div class="product-row">
+                <span><b>${esc(row.product_code)}</b><br><small>${esc(day(row.sale_date))} · ${row.quantity} pcs · Sell ${money(row.unit_selling_price)} / Buy ${money(row.unit_buying_price)}</small>${row.note ? `<br><small>${esc(row.note)}</small>` : ""}</span>
+                <span><b>${money(profit)} profit</b><br><small>${margin}% margin</small></span>
+            </div>`;
+        }).join("") : '<p class="muted">No personal sales yet.</p>';
+    }
+
+    let purchaseHistoryRows = [];
+    let personalHistoryRows = [];
+
+    async function loadGlobalInventory() {
+        if (role !== "owner") return;
+        const [catalog, inventory, purchases, personal] = await Promise.all([
+            data(db.from("fair_sales_price_codes")
+                .select("product_code,buying_price,default_selling_price")
+                .order("product_code")),
+            data(db.rpc("fair_sales_get_global_inventory")),
+            data(db.from("fair_sales_product_purchases")
+                .select("id,product_code,quantity,unit_buying_price,purchase_date,note")
+                .order("purchase_date", { ascending: false }).limit(50)),
+            data(db.from("fair_sales_personal_entries")
+                .select("id,product_code,quantity,unit_buying_price,unit_selling_price,sale_date,note")
+                .order("sale_date", { ascending: false }).limit(50))
+        ]);
+        globalCatalog = catalog || [];
+        globalInventory = inventory || [];
+        purchaseHistoryRows = purchases || [];
+        personalHistoryRows = personal || [];
+        fillGlobalProductSelect("purchaseCode");
+        fillGlobalProductSelect("personalCode");
+        fillGlobalProductSelect("adjustCode");
+        renderGlobalInventory();
+        updatePurchasePreview();
+        updatePersonalPreview();
+    }
+
+    $("purchaseCode").addEventListener("change", updatePurchasePreview);
+    $("purchaseQty").addEventListener("input", updatePurchasePreview);
+    $("personalCode").addEventListener("change", updatePersonalPreview);
+    $("personalQty").addEventListener("input", updatePersonalPreview);
+    $("personalPrice").addEventListener("input", updatePersonalPreview);
+
+    $("purchaseform").onsubmit = async (e) => {
+        e.preventDefault();
+        const button = e.submitter;
+        if (role !== "owner" || !user) return msg("Only the owner can record purchases.", true);
+        const code = $("purchaseCode").value;
+        const item = globalCatalog.find(x => x.product_code === code);
+        const quantity = Number($("purchaseQty").value);
+        if (!item || !Number.isInteger(quantity) || quantity < 1) return msg("Choose a product and enter a valid quantity.", true);
+        if (button) button.disabled = true;
+        try {
+            await data(db.from("fair_sales_product_purchases").insert({
+                product_code: code,
+                quantity,
+                unit_buying_price: Number(item.buying_price),
+                purchase_date: $("purchaseDate").value,
+                note: $("purchaseNote").value.trim() || null,
+                created_by: user.id
+            }));
+            e.target.reset();
+            $("purchaseDate").value = new Date().toISOString().slice(0, 10);
+            await loadGlobalInventory();
+            msg("Purchase saved. Global stock increased.");
+        } catch (error) {
+            msg(error.message || "Could not save purchase.", true);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    };
+
+    $("personalform").onsubmit = async (e) => {
+        e.preventDefault();
+        const button = e.submitter;
+        if (role !== "owner" || !user) return msg("Only the owner can add personal sales.", true);
+        const code = $("personalCode").value;
+        const item = globalCatalog.find(x => x.product_code === code);
+        const quantity = Number($("personalQty").value);
+        const selling = Number($("personalPrice").value);
+        const available = Number(globalInventory.find(x => x.product_code === code)?.available_quantity || 0);
+        if (!item || !Number.isInteger(quantity) || quantity < 1 || !Number.isFinite(selling) || selling < 0 || $("personalPrice").value === "") {
+            return msg("Choose a product and enter valid quantity and selling price.", true);
+        }
+        if (quantity > available) return msg("Not enough stock. Available: " + available + " pcs.", true);
+        if (button) button.disabled = true;
+        try {
+            await data(db.from("fair_sales_personal_entries").insert({
+                product_code: code,
+                quantity,
+                unit_buying_price: Number(item.buying_price),
+                unit_selling_price: selling,
+                sale_date: $("personalDate").value,
+                note: $("personalNote").value.trim() || null,
+                created_by: user.id
+            }));
+            e.target.reset();
+            $("personalDate").value = new Date().toISOString().slice(0, 10);
+            await loadGlobalInventory();
+            msg("Personal sale saved. Stock and profit updated.");
+        } catch (error) {
+            msg(error.message || "Could not save personal sale.", true);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    };
+
+    $("adjustform").onsubmit = async (e) => {
+        e.preventDefault();
+        const button = e.submitter;
+        if (role !== "owner" || !user) return msg("Only the owner can adjust stock.", true);
+        const code = $("adjustCode").value;
+        const delta = Number($("adjustDelta").value);
+        const reason = $("adjustReason").value.trim();
+        if (!globalCatalog.some(x => x.product_code === code) || !Number.isInteger(delta) || delta === 0 || !reason) {
+            return msg("Choose a product, enter a non-zero quantity change and reason.", true);
+        }
+        const available = Number(globalInventory.find(x => x.product_code === code)?.available_quantity || 0);
+        if (available + delta < 0) return msg("Adjustment would make stock negative.", true);
+        if (button) button.disabled = true;
+        try {
+            await data(db.from("fair_sales_stock_adjustments").insert({
+                product_code: code,
+                quantity_delta: delta,
+                adjustment_date: $("adjustDate").value,
+                reason,
+                created_by: user.id
+            }));
+            e.target.reset();
+            $("adjustDate").value = new Date().toISOString().slice(0, 10);
+            await loadGlobalInventory();
+            msg("Stock adjustment saved.");
+        } catch (error) {
+            msg(error.message || "Could not adjust stock.", true);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    };
 
 
     // ========================================
