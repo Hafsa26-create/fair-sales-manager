@@ -553,8 +553,13 @@ if (!fairs.length) {
         }
 
         if (role === "owner") {
-            // Populate owner-only product selectors before fair-specific setup.
-            await loadGlobalInventory();
+            // Inventory errors must not prevent the fair report from rendering.
+            try {
+                await loadGlobalInventory();
+            } catch (inventoryError) {
+                console.error("Global inventory load failed:", inventoryError);
+                msg("Global stock could not refresh. Fair reports will still load.", true);
+            }
 
             finance = await data(
                 db
@@ -575,6 +580,13 @@ if (!fairs.length) {
 
         if (role === "owner") {
             await report();
+            try {
+                await loadSalesBreakdowns();
+            } catch (breakdownError) {
+                console.error("Fair/personal sales breakdown load failed:", breakdownError);
+                $("fairSalesBreakdown").innerHTML = '<p class="muted">Could not load fair-wise sales. Please use Refresh and try again.</p>';
+                $("personalBreakdownChart").innerHTML = '<p class="muted">Could not load personal sales breakdown. Please use Refresh and try again.</p>';
+            }
             subscribe();
         }
     }
@@ -931,14 +943,6 @@ if (!fairs.length) {
         renderGlobalInventory();
         updatePurchasePreview();
         updatePersonalPreview();
-
-        try {
-            await loadSalesBreakdowns();
-        } catch (breakdownError) {
-            console.error("Separate fair/personal breakdowns could not load:", breakdownError);
-            $("fairSalesBreakdown").innerHTML = '<p class="muted">Fair-wise sales breakdown could not load. Please refresh.</p>';
-            $("personalBreakdownChart").innerHTML = '<p class="muted">Personal sales breakdown could not load. Please refresh.</p>';
-        }
 
         if (results.some(result => result.status === "rejected")) {
             msg("Product codes loaded, but some stock summaries could not refresh. Please retry.", true);
@@ -1800,7 +1804,13 @@ if (!fairs.length) {
     // 14. REFRESH REPORT
     // ========================================
 
-    $("refresh").onclick = () => safe(report);
+    $("refresh").onclick = () => safe(async () => {
+        await report();
+        if (role === "owner") {
+            await loadGlobalInventory();
+            await loadSalesBreakdowns();
+        }
+    });
 
 
     // ========================================
