@@ -6,9 +6,17 @@
     const $ = (id) => document.getElementById(id);
 
     const cfg = window.FAIR_APP_CONFIG;
-    const S = window.supabase;
+    let S = window.supabase;
 
     let db;
+    let clientReadyPromise;
+    let resolveClientReady;
+    let rejectClientReady;
+    clientReadyPromise = new Promise((resolve, reject) => {
+        resolveClientReady = resolve;
+        rejectClientReady = reject;
+    });
+    clientReadyPromise.catch(() => {});
     let user;
     let activeUserId = null;
     let mode = "login";
@@ -1298,6 +1306,11 @@ if (!fairs.length) {
         b.disabled = true;
 
         try {
+            if (!db?.auth) await clientReadyPromise;
+            if (!db?.auth) {
+                throw new Error("Supabase client could not initialize. Reload the page and check the connection.");
+            }
+
             const email = $("email").value.trim().toLowerCase();
             const password = $("password").value;
 
@@ -1618,7 +1631,7 @@ if (!fairs.length) {
     // Live per-piece profit estimate based on the owner's two entered prices.
     function updateExpectedProfit() {
         const buyingValue = $("buying").value;
-        const sellingValue = $("defaultSelling").value;
+        const sellingValue = $("fixedprice").value;
 
         if (buyingValue === "" || sellingValue === "") {
             $("expectedProfit").value = "";
@@ -1629,7 +1642,7 @@ if (!fairs.length) {
         $("expectedProfit").value = money(profit);
     }
 
-    $("defaultSelling").addEventListener("input", updateExpectedProfit);
+    $("fixedprice").addEventListener("input", updateExpectedProfit);
 
     $("productform").onsubmit = async (e) => {
         e.preventDefault();
@@ -1650,8 +1663,8 @@ if (!fairs.length) {
                 throw Error("Enter a valid buying price of zero or more.");
             }
 
-            const sellingPrice = Number($("defaultSelling").value);
-            if (!Number.isFinite(sellingPrice) || sellingPrice < 0 || $("defaultSelling").value === "") {
+            const sellingPrice = Number($("fixedprice").value);
+            if (!Number.isFinite(sellingPrice) || sellingPrice < 0 || $("fixedprice").value === "") {
                 throw Error("Enter a valid default selling price of zero or more.");
             }
 
@@ -1694,12 +1707,12 @@ if (!fairs.length) {
             if (matches.length) {
                 $("code").value = matches[0].product_code;
                 $("code").readOnly = true;
-                $("defaultSelling").value = matches[0].default_selling_price ?? "";
+                $("fixedprice").value = matches[0].default_selling_price ?? "";
                 updateExpectedProfit();
                 msg("Existing global code applied: " + matches[0].product_code);
             } else {
                 $("code").readOnly = false;
-                $("defaultSelling").value = "";
+                $("fixedprice").value = "";
                 updateExpectedProfit();
             }
         } catch (error) {
@@ -1712,7 +1725,7 @@ if (!fairs.length) {
         if (!$("buying").value) {
             $("code").value = "";
             $("code").readOnly = false;
-            $("defaultSelling").value = "";
+            $("fixedprice").value = "";
         }
         updateExpectedProfit();
     });
@@ -1817,13 +1830,46 @@ if (!fairs.length) {
     // 15. INITIALIZE APP & RESTORE SESSION
     // ========================================
 
-    document.addEventListener("DOMContentLoaded", () => {
-        if (!S || !cfg?.supabaseUrl || !cfg?.supabaseKey) {
-            msg("Missing Supabase config.", true);
+    document.addEventListener("DOMContentLoaded", async () => {
+        if (!cfg?.supabaseUrl || !cfg?.supabaseKey) {
+            const error = new Error("Supabase configuration is missing. Please contact the app owner.");
+            rejectClientReady(error);
+            msg(error.message, true);
             return;
         }
 
-        db = S.createClient(
+        // Recover if the primary jsDelivr script was blocked or did not expose
+        // the UMD global. The unpkg fallback avoids leaving db undefined.
+        if (!window.supabase?.createClient) {
+            try {
+                await new Promise((resolve, reject) => {
+                    const fallback = document.createElement("script");
+                    fallback.src = "https://unpkg.com/@supabase/supabase-js@2";
+                    fallback.async = true;
+                    fallback.onload = () => window.supabase?.createClient
+                        ? resolve()
+                        : reject(new Error("Supabase library loaded without createClient."));
+                    fallback.onerror = () => reject(new Error("Could not load Supabase from either CDN."));
+                    document.head.appendChild(fallback);
+                });
+            } catch (libraryError) {
+                console.error("Supabase library initialization failed:", libraryError);
+                rejectClientReady(libraryError);
+                msg("Supabase library could not load. Check your internet connection and reload.", true);
+                return;
+            }
+        }
+
+        S = window.supabase;
+        if (typeof S?.createClient !== "function") {
+            const error = new Error("Supabase library is unavailable. Please reload the page.");
+            rejectClientReady(error);
+            msg(error.message, true);
+            return;
+        }
+
+        try {
+            db = S.createClient(
             cfg.supabaseUrl,
             cfg.supabaseKey,
             {
@@ -1832,8 +1878,18 @@ if (!fairs.length) {
                     autoRefreshToken: true
                 }
             }
-        );
-               
+            );
+            if (!db || !db.auth || typeof db.auth.onAuthStateChange !== "function") {
+                throw new Error("Supabase client was not created correctly. Please reload the app.");
+            }
+            resolveClientReady(db);
+        } catch (clientError) {
+            console.error("Supabase client creation failed:", clientError);
+            rejectClientReady(clientError);
+            msg("Supabase client could not be created. Please reload the page.", true);
+            return;
+        }
+
         $("expenseDate").value =
             new Date().toISOString().slice(0, 10);
 
