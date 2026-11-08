@@ -6,7 +6,7 @@
     const $ = (id) => document.getElementById(id);
 
     const cfg = window.FAIR_APP_CONFIG;
-    const S = window.supabase;
+    let S = window.supabase;
 
     let db;
     let user;
@@ -1298,6 +1298,10 @@ if (!fairs.length) {
         b.disabled = true;
 
         try {
+            if (!db?.auth) {
+                throw new Error("Supabase client is not ready. Reload the page; if the problem continues, check your internet connection.");
+            }
+
             const email = $("email").value.trim().toLowerCase();
             const password = $("password").value;
 
@@ -1817,9 +1821,36 @@ if (!fairs.length) {
     // 15. INITIALIZE APP & RESTORE SESSION
     // ========================================
 
-    document.addEventListener("DOMContentLoaded", () => {
-        if (!S || !cfg?.supabaseUrl || !cfg?.supabaseKey) {
-            msg("Missing Supabase config.", true);
+    document.addEventListener("DOMContentLoaded", async () => {
+        if (!cfg?.supabaseUrl || !cfg?.supabaseKey) {
+            msg("Supabase configuration is missing. Please contact the app owner.", true);
+            return;
+        }
+
+        // Recover if the primary jsDelivr script was blocked or did not expose
+        // the UMD global. The unpkg fallback avoids leaving db undefined.
+        if (!window.supabase?.createClient) {
+            try {
+                await new Promise((resolve, reject) => {
+                    const fallback = document.createElement("script");
+                    fallback.src = "https://unpkg.com/@supabase/supabase-js@2";
+                    fallback.async = true;
+                    fallback.onload = () => window.supabase?.createClient
+                        ? resolve()
+                        : reject(new Error("Supabase library loaded without createClient."));
+                    fallback.onerror = () => reject(new Error("Could not load Supabase from either CDN."));
+                    document.head.appendChild(fallback);
+                });
+            } catch (libraryError) {
+                console.error("Supabase library initialization failed:", libraryError);
+                msg("Supabase library could not load. Check your internet connection and reload.", true);
+                return;
+            }
+        }
+
+        S = window.supabase;
+        if (typeof S?.createClient !== "function") {
+            msg("Supabase library is unavailable. Please reload the page.", true);
             return;
         }
 
