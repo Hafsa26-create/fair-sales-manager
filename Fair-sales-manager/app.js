@@ -737,26 +737,12 @@ if (!fairs.length) {
         const totalStockValue = rows.reduce((sum, row) => sum + Number(row.stock_value || 0), 0);
         const totalAvailable = rows.reduce((sum, row) => sum + Number(row.available_quantity || 0), 0);
         const totalPurchased = rows.reduce((sum, row) => sum + Number(row.purchased_quantity || 0), 0);
-        const totalPersonalProfit = rows.reduce((sum, row) => sum + Number(row.personal_gross_profit || 0), 0);
-        const totalPersonalRevenue = rows.reduce((sum, row) => sum + Number(row.personal_revenue || 0), 0);
-        const totalPersonalCost = rows.reduce((sum, row) => sum + Number(row.personal_cogs || 0), 0);
-        const totalPersonalItems = rows.reduce((sum, row) => sum + Number(row.personal_sold_quantity || 0), 0);
-        const totalCombinedProfit = rows.reduce((sum, row) => sum + Number(row.combined_gross_profit || 0), 0);
-        const totalCombinedRevenue = rows.reduce((sum, row) => sum + Number(row.combined_revenue || 0), 0);
-
         $("stockSummary").innerHTML = `
             <div class="report">
                 <div>Available stock<b>${totalAvailable} pcs</b></div>
                 <div>Current stock value<b>${money(totalStockValue)}</b></div>
                 <div>Total purchase spend<b>${money(globalPurchaseTotal)}</b></div>
                 <div>Purchased items<b>${totalPurchased} pcs</b></div>
-                <div>Personal sales<b>${money(totalPersonalRevenue)}</b></div>
-            </div>
-            <div class="report">
-                <div>Personal gross profit<b>${money(totalPersonalProfit)}</b></div>
-                <div>Personal profit margin<b>${totalPersonalRevenue > 0 ? (totalPersonalProfit / totalPersonalRevenue * 100).toFixed(1) : "0.0"}%</b></div>
-                <div>Combined gross profit<b>${money(totalCombinedProfit)}</b></div>
-                <div>Combined revenue<b>${money(totalCombinedRevenue)}</b></div>
             </div>
         `;
 
