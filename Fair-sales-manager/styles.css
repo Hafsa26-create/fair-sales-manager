@@ -487,3 +487,13 @@ footer {
     opacity: .45;
     cursor: not-allowed;
 }
+
+/* Global inventory and owner ledger */
+#inventoryList { overflow-x: auto; }
+#inventoryList .sales-table { min-width: 760px; }
+#owner h3 { margin: 18px 0 8px; font-size: 16px; }
+#owner .report { grid-template-columns: repeat(4, 1fr); }
+#owner form button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 700px) {
+  #owner .report { grid-template-columns: 1fr 1fr; }
+}
