@@ -553,6 +553,9 @@ if (!fairs.length) {
         }
 
         if (role === "owner") {
+            // Populate owner-only product selectors before fair-specific setup.
+            await loadGlobalInventory();
+
             finance = await data(
                 db
                     .from("fair_sales_financials")
@@ -572,7 +575,6 @@ if (!fairs.length) {
 
         if (role === "owner") {
             await report();
-            await loadGlobalInventory();
             subscribe();
         }
     }
