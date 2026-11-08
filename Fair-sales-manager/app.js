@@ -1472,7 +1472,7 @@ if (!fairs.length) {
 
             $("qty").value = 1;
             $("price").value = "";
-            $("defaultPrice").value = "";
+            $("employeeDefaultPrice").value = "";
             $("productSelect").value = "";
             $("total").textContent = money(0);
 
@@ -1761,7 +1761,7 @@ if (!fairs.length) {
     $("productSelect").addEventListener("change", () => {
         const selected = products.find((p) => p.id === $("productSelect").value);
         const defaultPrice = selected?.default_selling_price;
-        $("defaultPrice").value =
+        $("employeeDefaultPrice").value =
             defaultPrice === null || defaultPrice === undefined ? "" : Number(defaultPrice);
         // Start actual price at the owner's default; employee can edit it after bargaining.
         $("price").value =
