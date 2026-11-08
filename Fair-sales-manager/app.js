@@ -702,6 +702,7 @@ if (!fairs.length) {
                             <span>
                                 <b>Default selling: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</b><br>
                                 <button type="button" class="quiet product-code-edit" data-product-code="${esc(p.product_code)}">Edit code</button>
+                                <button type="button" class="quiet product-default-price-edit" data-product-code="${esc(p.product_code)}" data-default-price="${p.default_selling_price ?? ""}">Edit default price</button>
                             </span>
                         </div>
                     `
@@ -1635,6 +1636,38 @@ if (!fairs.length) {
     // Rename a global product code while preserving linked purchase, stock,
     // personal-sale and fair-sales history through database foreign-key cascades.
     $("productList").addEventListener("click", async (event) => {
+        const priceButton = event.target.closest(".product-default-price-edit");
+        if (priceButton) {
+            if (role !== "owner" || !user) {
+                msg("Only the owner can edit default prices.", true);
+                return;
+            }
+            const code = priceButton.dataset.productCode;
+            const currentPrice = priceButton.dataset.defaultPrice;
+            const entered = window.prompt("Enter the new default selling price (zero or more):", currentPrice);
+            if (entered === null) return;
+            const normalized = entered.trim();
+            const newPrice = Number(normalized);
+            if (normalized === "" || !Number.isFinite(newPrice) || newPrice < 0) {
+                msg("Enter a valid default selling price of zero or more.", true);
+                return;
+            }
+            priceButton.disabled = true;
+            try {
+                await data(db.rpc("fair_sales_update_default_price", {
+                    p_product_code: code,
+                    p_default_selling_price: newPrice
+                }));
+                await Promise.all([loadProducts(), loadGlobalInventory()]);
+                msg("Default selling price updated for " + code + " across your fairs.");
+            } catch (error) {
+                msg(error.message || "Could not update default selling price.", true);
+            } finally {
+                priceButton.disabled = false;
+            }
+            return;
+        }
+
         const button = event.target.closest(".product-code-edit");
         if (!button) return;
         if (role !== "owner" || !user) {
