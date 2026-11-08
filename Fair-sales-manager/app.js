@@ -9,6 +9,13 @@
     let S = window.supabase;
 
     let db;
+    let clientReadyPromise;
+    let resolveClientReady;
+    let rejectClientReady;
+    clientReadyPromise = new Promise((resolve, reject) => {
+        resolveClientReady = resolve;
+        rejectClientReady = reject;
+    });
     let user;
     let activeUserId = null;
     let mode = "login";
@@ -1298,8 +1305,9 @@ if (!fairs.length) {
         b.disabled = true;
 
         try {
+            if (!db?.auth) await clientReadyPromise;
             if (!db?.auth) {
-                throw new Error("Supabase client is not ready. Reload the page; if the problem continues, check your internet connection.");
+                throw new Error("Supabase client could not initialize. Reload the page and check the connection.");
             }
 
             const email = $("email").value.trim().toLowerCase();
@@ -1843,6 +1851,7 @@ if (!fairs.length) {
                 });
             } catch (libraryError) {
                 console.error("Supabase library initialization failed:", libraryError);
+                rejectClientReady(libraryError);
                 msg("Supabase library could not load. Check your internet connection and reload.", true);
                 return;
             }
@@ -1850,11 +1859,14 @@ if (!fairs.length) {
 
         S = window.supabase;
         if (typeof S?.createClient !== "function") {
-            msg("Supabase library is unavailable. Please reload the page.", true);
+            const error = new Error("Supabase library is unavailable. Please reload the page.");
+            rejectClientReady(error);
+            msg(error.message, true);
             return;
         }
 
-        db = S.createClient(
+        try {
+            db = S.createClient(
             cfg.supabaseUrl,
             cfg.supabaseKey,
             {
@@ -1863,8 +1875,15 @@ if (!fairs.length) {
                     autoRefreshToken: true
                 }
             }
-        );
-               
+            );
+            resolveClientReady(db);
+        } catch (clientError) {
+            console.error("Supabase client creation failed:", clientError);
+            rejectClientReady(clientError);
+            msg("Supabase client could not be created. Please reload the page.", true);
+            return;
+        }
+
         $("expenseDate").value =
             new Date().toISOString().slice(0, 10);
 
