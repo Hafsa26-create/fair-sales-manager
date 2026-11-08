@@ -208,6 +208,10 @@
               <b id="lunchTotal">৳0</b>
             </div>
 
+            <div>
+              Total expenses
+              <b id="expenseTotal">৳0</b>
+            </div>
           </div>
 
           <small class="muted">
@@ -269,16 +273,7 @@
               >
             </label>
 
-            <label>
-              Other expenses (৳)
-              <input
-                id="other"
-                type="number"
-                min="0"
-                value="0"
-                required
-              >
-            </label>
+            
 
             <button class="primary span">Create fair</button>
           </form>
@@ -311,7 +306,7 @@
 
         <div class="card">
           <h2>Product categories</h2>
-          <p class="muted">Buying and default selling prices are visible only to you here. Product codes and default selling prices are shared across all your fairs. Employees see the default selling price and can enter the actual price after bargaining.</p>
+          <p class="muted">Buying and fixed prices are visible only to you here. Product codes and fixed prices are shared across all your fairs. Employees see the fixed price and can enter the actual price after bargaining.</p>
 
           <form id="productform" class="grid">
             <label>
@@ -331,9 +326,9 @@
             </label>
 
             <label>
-              Default selling price (৳)
+              Fixed price (৳)
               <input
-                id="defaultSelling"
+                id="fixedprice"
                 type="number"
                 min="0"
                 step=".01"
@@ -374,7 +369,7 @@
             <div class="total span"><span>Total purchase amount</span><b id="purchaseTotal">৳0</b></div>
             <button class="secondary span">Save product purchase</button>
           </form>
-          <h3>Current global stock</h3>
+          <h3>Inventory</h3>
           <div id="stockSummary"></div>
           <div id="inventoryList"></div>
           <h3>Recent purchase history</h3>
