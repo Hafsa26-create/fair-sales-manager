@@ -1879,6 +1879,9 @@ if (!fairs.length) {
                 }
             }
             );
+            if (!db || !db.auth || typeof db.auth.onAuthStateChange !== "function") {
+                throw new Error("Supabase client was not created correctly. Please reload the app.");
+            }
             resolveClientReady(db);
         } catch (clientError) {
             console.error("Supabase client creation failed:", clientError);
