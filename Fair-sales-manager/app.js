@@ -21,6 +21,9 @@
     let products = [];
     let sales = [];
     let expenses = [];
+    let salesPage = 0;
+    let expensesPage = 0;
+    const REPORT_PAGE_SIZE = 50;
     let channel = null;
 
 
@@ -524,6 +527,8 @@ if (!fairs.length) {
         fair = fairs.find((f) => f.id === id) || null;
         role = fair?.role || null;
         finance = null;
+        salesPage = 0;
+        expensesPage = 0;
         products = [];
 
         if (fair && user) {
@@ -689,101 +694,64 @@ if (!fairs.length) {
     // ========================================
 
     async function report() {
-        if (role !== "owner" || !fair) {
-            return;
-        }
+        if (role !== "owner" || !fair) return;
 
-        const [ss, cc, ee, ff] = await Promise.all([
-            data(
-                db
-                    .from("fair_sales_entries")
-                    .select("*")
-                    .eq("fair_id", fair.id)
-                    .order("created_at", { ascending: false })
-            ),
+        const currentFairId = fair.id;
+        const salesFrom = salesPage * REPORT_PAGE_SIZE;
+        const expensesFrom = expensesPage * REPORT_PAGE_SIZE;
 
-            data(
-                db
-                    .from("fair_sales_product_costs")
-                    .select("product_id,buying_price")
-                    .eq("fair_id", fair.id)
-            ),
-
-            data(
-                db
-                    .from("fair_sales_expenses")
-                    .select("*")
-                    .eq("fair_id", fair.id)
-                    .order("expense_date", { ascending: false })
-            ),
-
-            data(
-                db
-                    .from("fair_sales_financials")
-                    .select("*")
-                    .eq("fair_id", fair.id)
-                    .single()
-            )
+        const [totals, ssResult, cc, eeResult, ff] = await Promise.all([
+            data(db.rpc("fair_sales_get_report_totals", { p_fair_id: currentFairId })),
+            db.from("fair_sales_entries").select("*", { count: "exact" })
+                .eq("fair_id", currentFairId)
+                .order("created_at", { ascending: false })
+                .range(salesFrom, salesFrom + REPORT_PAGE_SIZE - 1),
+            data(db.from("fair_sales_product_costs").select("product_id,buying_price").eq("fair_id", currentFairId)),
+            db.from("fair_sales_expenses").select("*", { count: "exact" })
+                .eq("fair_id", currentFairId)
+                .order("expense_date", { ascending: false })
+                .range(expensesFrom, expensesFrom + REPORT_PAGE_SIZE - 1),
+            data(db.from("fair_sales_financials").select("*").eq("fair_id", currentFairId).single())
         ]);
 
+        if (ssResult.error) throw ssResult.error;
+        if (eeResult.error) throw eeResult.error;
+        if (!fair || fair.id !== currentFairId) return;
+
+        const totalSalesCount = ssResult.count || 0;
+        const totalExpenseCount = eeResult.count || 0;
+        const totalSalesPages = Math.max(1, Math.ceil(totalSalesCount / REPORT_PAGE_SIZE));
+        const totalExpensePages = Math.max(1, Math.ceil(totalExpenseCount / REPORT_PAGE_SIZE));
+
+        if (salesPage >= totalSalesPages && salesPage > 0) {
+            salesPage = totalSalesPages - 1;
+            return report();
+        }
+        if (expensesPage >= totalExpensePages && expensesPage > 0) {
+            expensesPage = totalExpensePages - 1;
+            return report();
+        }
+
+        const ss = ssResult.data || [];
+        const ee = eeResult.data || [];
         sales = ss;
         expenses = ee;
         finance = ff;
 
-        const cost = new Map(
-            cc.map((c) => [
-                c.product_id,
-                Number(c.buying_price)
-            ])
-        );
-
-        const pm = new Map(
-            products.map((p) => [p.id, p])
-        );
-
-        let revenue = 0;
-        let cogs = 0;
-        let items = 0;
-
-        for (const s of ss) {
-            revenue +=
-                Number(s.quantity) *
-                Number(s.unit_selling_price);
-
-            cogs +=
-                Number(s.quantity) *
-                (cost.get(s.product_id) || 0);
-
-            items += Number(s.quantity);
-        }
-
-        const commission =
-            revenue * Number(finance.commission_rate || 0);
-
-        const days = Math.max(
-            1,
-            Math.round(
-                (
-                    new Date(fair.end_date + "T00:00:00") -
-                    new Date(fair.start_date + "T00:00:00")
-                ) / 86400000
-            ) + 1
-        );
-
-        const other =
-            Number(finance.other_expenses || 0) +
-            ee.reduce((a, x) => a + Number(x.amount), 0);
-
-        const lunch =
-            days * Number(finance.lunch_per_day || 0);
-
-        const profit =
-            revenue -
-            cogs -
-            commission -
-            Number(finance.stall_rent || 0) -
-            lunch -
-            other;
+        const cost = new Map(cc.map(c => [c.product_id, Number(c.buying_price)]));
+        const pm = new Map(products.map(p => [p.id, p]));
+        const revenue = Number(totals.revenue || 0);
+        const cogs = Number(totals.cogs || 0);
+        const items = Number(totals.items || 0);
+        const commission = revenue * Number(finance.commission_rate || 0);
+        const days = Math.max(1, Math.round((
+            new Date(fair.end_date + "T00:00:00") -
+            new Date(fair.start_date + "T00:00:00")
+        ) / 86400000) + 1);
+        const other = Number(finance.other_expenses || 0) + Number(totals.expense_total || 0);
+        const lunch = days * Number(finance.lunch_per_day || 0);
+        const profit = revenue - cogs - commission -
+            Number(finance.stall_rent || 0) - lunch - other;
 
         $("salesTotal").textContent = money(revenue);
         $("profitTotal").textContent = money(profit);
@@ -794,59 +762,68 @@ if (!fairs.length) {
         $("lunchTotal").textContent = money(lunch);
         $("expenseTotal").textContent = money(other);
 
-        $("salesList").innerHTML = ss.length
-            ? `
-                <div style="overflow:auto">
-                    <table class="sales-table">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Product</th>
-                                <th>Qty</th>
-                                <th>Default price</th>
-                                <th>Actual price</th>
-                                <th>Sales</th>
-                                <th>Cost</th>
-                                <th>Margin</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            ${ss
-                                .map((s) => {
-                                    const p = pm.get(s.product_id);
-
-                                    const sale =
-                                        Number(s.quantity) *
-                                        Number(s.unit_selling_price);
-                                    const defaultPrice = s.default_unit_selling_price;
-
-                                    const c =
-                                        Number(s.quantity) *
-                                        (cost.get(s.product_id) || 0);
-
-                                    return `
-                                        <tr>
-                                            <td>${esc(new Date(s.created_at).toLocaleString())}</td>
-                                            <td>${esc(p?.product_code || "Product")}</td>
-                                            <td>${s.quantity}</td>
-                                            <td>${defaultPrice === null || defaultPrice === undefined ? "—" : money(defaultPrice)}</td>
-                                            <td>${money(s.unit_selling_price)}</td>
-                                            <td>${money(sale)}</td>
-                                            <td>${money(c)}</td>
-                                            <td>${money(sale - c)}</td>
-                                        </tr>
-                                    `;
-                                })
-                                .join("")}
-                        </tbody>
-                    </table>
+        const missingCosts = Number(totals.missing_cost_count || 0);
+        $("salesList").innerHTML = ss.length ? `
+            <div style="overflow:auto">
+                <table class="sales-table">
+                    <thead><tr>
+                        <th>Time</th><th>Product</th><th>Qty</th><th>Default price</th>
+                        <th>Actual price</th><th>Sales</th><th>Cost</th><th>Margin</th>
+                    </tr></thead>
+                    <tbody>${ss.map(s => {
+                        const p = pm.get(s.product_id);
+                        const sale = Number(s.quantity) * Number(s.unit_selling_price);
+                        const defaultPrice = s.default_unit_selling_price;
+                        const unitCost = cost.get(s.product_id);
+                        const rowCost = unitCost === undefined ? null : Number(s.quantity) * unitCost;
+                        return `<tr>
+                            <td>${esc(new Date(s.created_at).toLocaleString())}</td>
+                            <td>${esc(p?.product_code || "Product")}</td>
+                            <td>${s.quantity}</td>
+                            <td>${defaultPrice === null || defaultPrice === undefined ? "—" : money(defaultPrice)}</td>
+                            <td>${money(s.unit_selling_price)}</td>
+                            <td>${money(sale)}</td>
+                            <td>${rowCost === null ? "Missing" : money(rowCost)}</td>
+                            <td>${rowCost === null ? "—" : money(sale - rowCost)}</td>
+                        </tr>`;
+                    }).join("")}</tbody>
+                </table>
+            </div>
+            <div class="report-pager">
+                <span>Showing ${salesFrom + 1}–${Math.min(salesFrom + ss.length, totalSalesCount)} of ${totalSalesCount} sales</span>
+                <div>
+                    <button type="button" class="quiet" data-sales-page="-1" ${salesPage === 0 ? "disabled" : ""}>Previous</button>
+                    <span>Page ${salesPage + 1} of ${totalSalesPages}</span>
+                    <button type="button" class="quiet" data-sales-page="1" ${salesPage + 1 >= totalSalesPages ? "disabled" : ""}>Next</button>
                 </div>
-            `
-            : '<p class="muted">No sales recorded yet.</p>';
+            </div>
+            ${missingCosts ? `<p class="muted">${missingCosts} sale(s) have no recorded buying cost; profit may be overstated.</p>` : ""}
+        ` : '<p class="muted">No sales recorded yet.</p>';
 
         renderExpenses();
+        $("expensePager").innerHTML = totalExpenseCount ? `
+            <span>Showing ${expensesFrom + 1}–${Math.min(expensesFrom + ee.length, totalExpenseCount)} of ${totalExpenseCount} expenses</span>
+            <div>
+                <button type="button" class="quiet" data-expenses-page="-1" ${expensesPage === 0 ? "disabled" : ""}>Previous</button>
+                <span>Page ${expensesPage + 1} of ${totalExpensePages}</span>
+                <button type="button" class="quiet" data-expenses-page="1" ${expensesPage + 1 >= totalExpensePages ? "disabled" : ""}>Next</button>
+            </div>
+        ` : "";
     }
+
+    $("salesList").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-sales-page]");
+        if (!button || button.disabled) return;
+        salesPage = Math.max(0, salesPage + Number(button.dataset.salesPage));
+        safe(report);
+    });
+
+    $("expensePager").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-expenses-page]");
+        if (!button || button.disabled) return;
+        expensesPage = Math.max(0, expensesPage + Number(button.dataset.expensesPage));
+        safe(report);
+    });
 
     function renderExpenses() {
         $("expenseList").innerHTML = expenses
