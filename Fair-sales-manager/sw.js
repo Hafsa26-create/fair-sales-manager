@@ -1,5 +1,4 @@
-const CACHE = "fair-sales-static-v33";
-const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+const CACHE = "fair-sales-static-v34";
 
 const FILES = [
     "./",
@@ -15,15 +14,6 @@ self.addEventListener("install", (event) => {
     event.waitUntil((async () => {
         const cache = await caches.open(CACHE);
         await cache.addAll(FILES);
-
-        try {
-            const response = await fetch(SUPABASE_CDN, { mode: "cors" });
-            if (response.ok) {
-                await cache.put(SUPABASE_CDN, response);
-            }
-        } catch (error) {
-            console.warn("Supabase library could not be cached:", error);
-        }
 
         await self.skipWaiting();
     })());
@@ -44,26 +34,6 @@ self.addEventListener("fetch", (event) => {
     const url = new URL(request.url);
 
     if (request.method !== "GET") return;
-
-    if (url.href === SUPABASE_CDN) {
-        event.respondWith((async () => {
-            const cache = await caches.open(CACHE);
-            const cached = await cache.match(SUPABASE_CDN);
-            if (cached) return cached;
-
-            try {
-                const response = await fetch(request);
-                if (response.ok) await cache.put(SUPABASE_CDN, response.clone());
-                return response;
-            } catch (error) {
-                return new Response("Supabase library unavailable offline.", {
-                    status: 503,
-                    headers: { "Content-Type": "text/plain" }
-                });
-            }
-        })());
-        return;
-    }
 
     if (url.origin !== self.location.origin) return;
 
