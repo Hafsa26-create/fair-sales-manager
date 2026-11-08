@@ -699,7 +699,10 @@ if (!fairs.length) {
                                 <b>${esc(p.product_code)}</b><br>
                                 <small>Buying: ${p.buying_price === undefined ? "Not set" : money(p.buying_price)}</small>
                             </span>
-                            <b>Default selling: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</b>
+                            <span>
+                                <b>Default selling: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</b><br>
+                                <button type="button" class="quiet product-code-edit" data-product-code="${esc(p.product_code)}">Edit code</button>
+                            </span>
                         </div>
                     `
                 )
@@ -1628,6 +1631,39 @@ if (!fairs.length) {
         }
     };
 
+
+    // Rename a global product code while preserving linked purchase, stock,
+    // personal-sale and fair-sales history through database foreign-key cascades.
+    $("productList").addEventListener("click", async (event) => {
+        const button = event.target.closest(".product-code-edit");
+        if (!button) return;
+        if (role !== "owner" || !user) {
+            msg("Only the owner can edit product codes.", true);
+            return;
+        }
+        const oldCode = button.dataset.productCode;
+        const entered = window.prompt("Enter the new product code (one capital letter and one digit):", oldCode);
+        if (entered === null) return;
+        const newCode = entered.trim().toUpperCase();
+        if (!/^[A-Z][0-9]$/.test(newCode)) {
+            msg("Use one capital letter followed by one number, for example A7.", true);
+            return;
+        }
+        if (newCode === oldCode) return;
+        button.disabled = true;
+        try {
+            await data(db.rpc("fair_sales_rename_price_code", {
+                p_old_product_code: oldCode,
+                p_new_product_code: newCode
+            }));
+            await Promise.all([loadProducts(), loadGlobalCatalog(), loadGlobalInventory()]);
+            msg("Product code " + oldCode + " changed to " + newCode + " across your fairs.");
+        } catch (error) {
+            msg(error.message || "Could not update product code.", true);
+        } finally {
+            button.disabled = false;
+        }
+    });
 
     // ========================================
     // 11. PRODUCT FORM
