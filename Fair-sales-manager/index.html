@@ -358,7 +358,7 @@
 
         <div class="card">
           <small class="eyebrow">GLOBAL · OWNER ONLY</small>
-          <h2>Product purchases & global stock</h2>
+          <h2>Product purchases & total stock</h2>
           <p class="muted">All fairs use this same stock balance. Purchases increase stock; fair sales and personal sales reduce it.</p>
           <form id="purchaseform" class="grid">
             <label>Product code<select id="purchaseCode" required><option value="">Choose product code</option></select></label>
@@ -410,11 +410,11 @@
         </div>
 
         <div class="card">
-          <h2>Stock adjustment</h2>
-          <p class="muted">Use + quantity to add stock and − quantity to record damaged, lost or removed items.</p>
+          <h2>Inventory </h2>
+
           <form id="adjustform" class="grid">
             <label>Product code<select id="adjustCode" required><option value="">Choose product code</option></select></label>
-            <label>Quantity change (+ / −)<input id="adjustDelta" type="number" step="1" required placeholder="-2 or 5"></label>
+            <label>Inventory <input id="adjustDelta" type="number" step="1" required placeholder="-2 or 5"></label>
             <label>Date<input id="adjustDate" type="date" required></label>
             <label>Reason<input id="adjustReason" required placeholder="Damaged / lost / correction"></label>
             <button class="secondary span">Save stock adjustment</button>
