@@ -1656,7 +1656,7 @@ if (!fairs.length) {
                 p_old_product_code: oldCode,
                 p_new_product_code: newCode
             }));
-            await Promise.all([loadProducts(), loadGlobalCatalog(), loadGlobalInventory()]);
+            await Promise.all([loadProducts(), loadGlobalInventory()]);
             msg("Product code " + oldCode + " changed to " + newCode + " across your fairs.");
         } catch (error) {
             msg(error.message || "Could not update product code.", true);
