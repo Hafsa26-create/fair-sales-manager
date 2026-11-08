@@ -801,9 +801,7 @@ if (!fairs.length) {
         if (role !== "owner") return;
 
         // Load the catalog first so dropdowns are not blocked by an unrelated report error.
-        globalCatalog = await data(db.from("fair_sales_price_codes")
-            .select("product_code,buying_price,default_selling_price")
-            .order("product_code"));
+        globalCatalog = await data(db.rpc("fair_sales_get_global_product_codes"));
 
         fillGlobalProductSelect("purchaseCode");
         fillGlobalProductSelect("personalCode");
