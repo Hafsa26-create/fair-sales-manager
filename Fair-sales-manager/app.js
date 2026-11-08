@@ -809,6 +809,10 @@ if (!fairs.length) {
         globalInventory = inventory || [];
         purchaseHistoryRows = purchases || [];
         personalHistoryRows = personal || [];
+        const today = new Date().toISOString().slice(0, 10);
+        if (!$("purchaseDate").value) $("purchaseDate").value = today;
+        if (!$("personalDate").value) $("personalDate").value = today;
+        if (!$("adjustDate").value) $("adjustDate").value = today;
         fillGlobalProductSelect("purchaseCode");
         fillGlobalProductSelect("personalCode");
         fillGlobalProductSelect("adjustCode");
@@ -1137,7 +1141,9 @@ if (!fairs.length) {
                     table: "fair_sales_entries",
                     filter: "fair_id=eq." + fair.id
                 },
-                () => safe(report)
+                () => safe(async () => {
+                    await Promise.all([report(), loadGlobalInventory()]);
+                })
             )
             .subscribe((status) => {
                 $("sync").textContent =
