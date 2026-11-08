@@ -763,13 +763,11 @@ if (!fairs.length) {
         $("inventoryList").innerHTML = rows.length ? `
             <div style="overflow:auto">
                 <table class="sales-table">
-                    <thead><tr><th>Code</th><th>Buy price</th><th>Purchased</th><th>Fair sold</th><th>Personal sold</th><th>Adjustment</th><th>Available</th><th>Stock value</th></tr></thead>
+                    <thead><tr><th>Code</th><th>Buy price</th><th>Purchased</th><th>Adjustment</th><th>Available</th><th>Stock value</th></tr></thead>
                     <tbody>${rows.map(row => `<tr>
                         <td><b>${esc(row.product_code)}</b></td>
                         <td>${money(row.buying_price)}</td>
                         <td>${row.purchased_quantity}</td>
-                        <td>${row.fair_sold_quantity}</td>
-                        <td>${row.personal_sold_quantity}</td>
                         <td>${row.adjusted_quantity}</td>
                         <td><b>${row.available_quantity}</b></td>
                         <td>${money(row.stock_value)}</td>
@@ -808,6 +806,104 @@ if (!fairs.length) {
 
     let purchaseHistoryRows = [];
     let personalHistoryRows = [];
+
+    async function fetchAllRows(buildQuery, pageSize = 500) {
+        const all = [];
+        for (let from = 0; ; from += pageSize) {
+            const batch = await data(buildQuery().range(from, from + pageSize - 1));
+            all.push(...(batch || []));
+            if (!batch || batch.length < pageSize) break;
+        }
+        return all;
+    }
+
+    async function loadSalesBreakdowns() {
+        const ownerFairs = fairs.filter(item => item.role === "owner");
+        const fairReports = await Promise.all(ownerFairs.map(async item => {
+            const [entries, fairProducts, costs] = await Promise.all([
+                fetchAllRows(() => db.from("fair_sales_entries")
+                    .select("product_id,quantity,unit_selling_price")
+                    .eq("fair_id", item.id)
+                    .order("created_at", { ascending: true })),
+                data(db.from("fair_sales_products").select("id,product_code").eq("fair_id", item.id)),
+                data(db.from("fair_sales_product_costs").select("product_id,buying_price").eq("fair_id", item.id))
+            ]);
+            const codeById = new Map(fairProducts.map(p => [p.id, p.product_code]));
+            const costById = new Map(costs.map(c => [c.product_id, Number(c.buying_price)]));
+            const grouped = new Map();
+            for (const sale of entries) {
+                const code = codeById.get(sale.product_id) || "Unknown";
+                const row = grouped.get(code) || { code, quantity: 0, revenue: 0, cost: 0, missing: 0 };
+                const qty = Number(sale.quantity || 0);
+                row.quantity += qty;
+                row.revenue += qty * Number(sale.unit_selling_price || 0);
+                if (costById.has(sale.product_id)) row.cost += qty * costById.get(sale.product_id);
+                else row.missing += qty;
+                grouped.set(code, row);
+            }
+            return { fair: item, rows: [...grouped.values()].sort((x,y) => x.code.localeCompare(y.code)) };
+        }));
+
+        const personalEntries = await fetchAllRows(() => db.from("fair_sales_personal_entries")
+            .select("product_code,quantity,unit_buying_price,unit_selling_price")
+            .order("sale_date", { ascending: true }));
+        const personalGrouped = new Map();
+        for (const sale of personalEntries) {
+            const code = sale.product_code || "Unknown";
+            const row = personalGrouped.get(code) || { code, quantity: 0, revenue: 0, cost: 0 };
+            const qty = Number(sale.quantity || 0);
+            row.quantity += qty;
+            row.revenue += qty * Number(sale.unit_selling_price || 0);
+            row.cost += qty * Number(sale.unit_buying_price || 0);
+            personalGrouped.set(code, row);
+        }
+
+        $("fairSalesBreakdown").innerHTML = fairReports.length ? fairReports.map(report => {
+            const quantity = report.rows.reduce((sum,row) => sum + row.quantity, 0);
+            const revenue = report.rows.reduce((sum,row) => sum + row.revenue, 0);
+            const cost = report.rows.reduce((sum,row) => sum + row.cost, 0);
+            const missing = report.rows.reduce((sum,row) => sum + row.missing, 0);
+            const profit = revenue - cost;
+            return `<div class="breakdown-card">
+                <h3>${esc(report.fair.name)}</h3>
+                <div class="report">
+                    <div>Items sold<b>${quantity} pcs</b></div>
+                    <div>Revenue<b>${money(revenue)}</b></div>
+                    <div>Product cost<b>${missing ? "Incomplete" : money(cost)}</b></div>
+                    <div>Gross profit<b>${missing ? "Incomplete" : money(profit)}</b></div>
+                </div>
+                <div style="overflow:auto"><table class="sales-table">
+                    <thead><tr><th>Code</th><th>Qty sold</th><th>Revenue</th><th>Product cost</th><th>Gross profit</th></tr></thead>
+                    <tbody>${report.rows.length ? report.rows.map(row => `<tr>
+                        <td><b>${esc(row.code)}</b></td><td>${row.quantity}</td><td>${money(row.revenue)}</td>
+                        <td>${row.missing ? "Missing" : money(row.cost)}</td>
+                        <td>${row.missing ? "—" : money(row.revenue-row.cost)}</td>
+                    </tr>`).join("") : '<tr><td colspan="5">No sales recorded for this fair.</td></tr>'}</tbody>
+                </table></div>
+                ${missing ? `<p class="muted">Warning: buying cost is missing for ${missing} sold item(s); profit is not shown as complete.</p>` : ""}
+            </div>`;
+        }).join("") : '<p class="muted">No fairs found.</p>';
+
+        const personalRows = [...personalGrouped.values()].sort((x,y) => x.code.localeCompare(y.code));
+        const pQty = personalRows.reduce((sum,row) => sum + row.quantity, 0);
+        const pRevenue = personalRows.reduce((sum,row) => sum + row.revenue, 0);
+        const pCost = personalRows.reduce((sum,row) => sum + row.cost, 0);
+        $("personalBreakdownChart").innerHTML = `
+            <div class="report">
+                <div>Items sold<b>${pQty} pcs</b></div><div>Revenue<b>${money(pRevenue)}</b></div>
+                <div>Product cost<b>${money(pCost)}</b></div><div>Gross profit<b>${money(pRevenue-pCost)}</b></div>
+                <div>Profit margin<b>${pRevenue > 0 ? ((pRevenue-pCost)/pRevenue*100).toFixed(1) : "0.0"}%</b></div>
+            </div>
+            <div style="overflow:auto"><table class="sales-table">
+                <thead><tr><th>Code</th><th>Qty sold</th><th>Revenue</th><th>Product cost</th><th>Gross profit</th><th>Margin</th></tr></thead>
+                <tbody>${personalRows.length ? personalRows.map(row => {
+                    const profit = row.revenue-row.cost;
+                    return `<tr><td><b>${esc(row.code)}</b></td><td>${row.quantity}</td><td>${money(row.revenue)}</td>
+                        <td>${money(row.cost)}</td><td>${money(profit)}</td>
+                        <td>${row.revenue > 0 ? (profit/row.revenue*100).toFixed(1) : "0.0"}%</td></tr>`;
+                }).join("") : '<tr><td colspan="6">No personal sales recorded yet.</td></tr>'}</tbody>
+            </table></div>`;
+    }
 
     async function loadGlobalInventory() {
         if (role !== "owner") return;
@@ -849,6 +945,14 @@ if (!fairs.length) {
         renderGlobalInventory();
         updatePurchasePreview();
         updatePersonalPreview();
+
+        try {
+            await loadSalesBreakdowns();
+        } catch (breakdownError) {
+            console.error("Separate fair/personal breakdowns could not load:", breakdownError);
+            $("fairSalesBreakdown").innerHTML = '<p class="muted">Fair-wise sales breakdown could not load. Please refresh.</p>';
+            $("personalBreakdownChart").innerHTML = '<p class="muted">Personal sales breakdown could not load. Please refresh.</p>';
+        }
 
         if (results.some(result => result.status === "rejected")) {
             msg("Product codes loaded, but some stock summaries could not refresh. Please retry.", true);
