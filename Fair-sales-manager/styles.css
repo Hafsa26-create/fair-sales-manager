@@ -357,7 +357,7 @@ small {
 }
 
 .expense-row {
-    background: #47292f;
+    background: #ffc0cc;
     color: var(--ink);
 }
 
@@ -400,7 +400,7 @@ small {
 
 footer {
     text-align: center;
-    color: #795E59;
+    color: #ffc2dc;
     padding: 20px;
     font-size: 15px;
 }
