@@ -1631,7 +1631,7 @@ if (!fairs.length) {
     // Live per-piece profit estimate based on the owner's two entered prices.
     function updateExpectedProfit() {
         const buyingValue = $("buying").value;
-        const sellingValue = $("defaultSelling").value;
+        const sellingValue = $("fixedprice").value;
 
         if (buyingValue === "" || sellingValue === "") {
             $("expectedProfit").value = "";
@@ -1642,7 +1642,7 @@ if (!fairs.length) {
         $("expectedProfit").value = money(profit);
     }
 
-    $("defaultSelling").addEventListener("input", updateExpectedProfit);
+    $("fixedprice").addEventListener("input", updateExpectedProfit);
 
     $("productform").onsubmit = async (e) => {
         e.preventDefault();
@@ -1663,8 +1663,8 @@ if (!fairs.length) {
                 throw Error("Enter a valid buying price of zero or more.");
             }
 
-            const sellingPrice = Number($("defaultSelling").value);
-            if (!Number.isFinite(sellingPrice) || sellingPrice < 0 || $("defaultSelling").value === "") {
+            const sellingPrice = Number($("fixedprice").value);
+            if (!Number.isFinite(sellingPrice) || sellingPrice < 0 || $("fixedprice").value === "") {
                 throw Error("Enter a valid default selling price of zero or more.");
             }
 
@@ -1707,12 +1707,12 @@ if (!fairs.length) {
             if (matches.length) {
                 $("code").value = matches[0].product_code;
                 $("code").readOnly = true;
-                $("defaultSelling").value = matches[0].default_selling_price ?? "";
+                $("fixedprice").value = matches[0].default_selling_price ?? "";
                 updateExpectedProfit();
                 msg("Existing global code applied: " + matches[0].product_code);
             } else {
                 $("code").readOnly = false;
-                $("defaultSelling").value = "";
+                $("fixedprice").value = "";
                 updateExpectedProfit();
             }
         } catch (error) {
@@ -1725,7 +1725,7 @@ if (!fairs.length) {
         if (!$("buying").value) {
             $("code").value = "";
             $("code").readOnly = false;
-            $("defaultSelling").value = "";
+            $("fixedprice").value = "";
         }
         updateExpectedProfit();
     });
