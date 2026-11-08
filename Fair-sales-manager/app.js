@@ -23,6 +23,7 @@
     let expenses = [];
     let globalCatalog = [];
     let globalInventory = [];
+    let globalPurchaseTotal = 0;
     let salesPage = 0;
     let expensesPage = 0;
     const REPORT_PAGE_SIZE = 50;
@@ -740,7 +741,8 @@ if (!fairs.length) {
         $("stockSummary").innerHTML = `
             <div class="report">
                 <div>Available stock<b>${totalAvailable} pcs</b></div>
-                <div>Stock investment<b>${money(totalStockValue)}</b></div>
+                <div>Current stock value<b>${money(totalStockValue)}</b></div>
+                <div>Total purchase spend<b>${money(globalPurchaseTotal)}</b></div>
                 <div>Purchased items<b>${totalPurchased} pcs</b></div>
                 <div>Personal sales<b>${money(totalPersonalRevenue)}</b></div>
             </div>
@@ -793,7 +795,7 @@ if (!fairs.length) {
 
     async function loadGlobalInventory() {
         if (role !== "owner") return;
-        const [catalog, inventory, purchases, personal] = await Promise.all([
+        const [catalog, inventory, purchases, personal, purchaseTotal] = await Promise.all([
             data(db.from("fair_sales_price_codes")
                 .select("product_code,buying_price,default_selling_price")
                 .order("product_code")),
@@ -803,10 +805,12 @@ if (!fairs.length) {
                 .order("purchase_date", { ascending: false }).limit(50)),
             data(db.from("fair_sales_personal_entries")
                 .select("id,product_code,quantity,unit_buying_price,unit_selling_price,sale_date,note")
-                .order("sale_date", { ascending: false }).limit(50))
+                .order("sale_date", { ascending: false }).limit(50)),
+            data(db.rpc("fair_sales_get_global_purchase_total"))
         ]);
         globalCatalog = catalog || [];
         globalInventory = inventory || [];
+        globalPurchaseTotal = Number(purchaseTotal || 0);
         purchaseHistoryRows = purchases || [];
         personalHistoryRows = personal || [];
         const today = new Date().toISOString().slice(0, 10);
