@@ -364,6 +364,61 @@
           <div id="productList"></div>
         </div>
 
+
+        <div class="card">
+          <small class="eyebrow">GLOBAL · OWNER ONLY</small>
+          <h2>Product purchases & global stock</h2>
+          <p class="muted">All fairs use this same stock balance. Purchases increase stock; fair sales and personal sales reduce it.</p>
+          <form id="purchaseform" class="grid">
+            <label>Product code<select id="purchaseCode" required><option value="">Choose product code</option></select></label>
+            <label>Quantity purchased (pcs)<input id="purchaseQty" type="number" min="1" step="1" value="1" required></label>
+            <label>Buying price per piece<input id="purchaseUnitCost" readonly placeholder="Auto from global code"></label>
+            <label>Purchase date<input id="purchaseDate" type="date" required></label>
+            <label class="span">Note (optional)<input id="purchaseNote" placeholder="Supplier / invoice / details"></label>
+            <div class="total span"><span>Total purchase amount</span><b id="purchaseTotal">৳0</b></div>
+            <button class="secondary span">Save product purchase</button>
+          </form>
+          <h3>Current global stock</h3>
+          <div id="stockSummary"></div>
+          <div id="inventoryList"></div>
+          <h3>Recent purchase history</h3>
+          <div id="purchaseHistory"></div>
+        </div>
+
+        <div class="card">
+          <small class="eyebrow">OWNER ONLY</small>
+          <h2>My personal sales</h2>
+          <p class="muted">Your own sales are separate from employee sales. Buying price is filled automatically from the global product code.</p>
+          <form id="personalform" class="grid">
+            <label>Product code<select id="personalCode" required><option value="">Choose product code</option></select></label>
+            <label>Quantity sold (pcs)<input id="personalQty" type="number" min="1" step="1" value="1" required></label>
+            <label>Buying price per piece<input id="personalUnitCost" readonly placeholder="Auto from product code"></label>
+            <label>Selling price per piece (৳)<input id="personalPrice" type="number" min="0" step=".01" required></label>
+            <label>Sale date<input id="personalDate" type="date" required></label>
+            <label class="span">Note (optional)<input id="personalNote" placeholder="Customer / order / details"></label>
+            <div class="report span">
+              <div>Sales revenue<b id="personalRevenue">৳0</b></div>
+              <div>Gross profit<b id="personalProfit">৳0</b></div>
+              <div>Profit margin<b id="personalMargin">0%</b></div>
+            </div>
+            <button class="secondary span">Save personal sale</button>
+          </form>
+          <h3>Recent personal sales</h3>
+          <div id="personalHistory"></div>
+        </div>
+
+        <div class="card">
+          <h2>Stock adjustment</h2>
+          <p class="muted">Use + quantity to add stock and − quantity to record damaged, lost or removed items.</p>
+          <form id="adjustform" class="grid">
+            <label>Product code<select id="adjustCode" required><option value="">Choose product code</option></select></label>
+            <label>Quantity change (+ / −)<input id="adjustDelta" type="number" step="1" required placeholder="-2 or 5"></label>
+            <label>Date<input id="adjustDate" type="date" required></label>
+            <label>Reason<input id="adjustReason" required placeholder="Damaged / lost / correction"></label>
+            <button class="secondary span">Save stock adjustment</button>
+          </form>
+        </div>
+
         <div class="card">
           <h2>Add employee</h2>
 
