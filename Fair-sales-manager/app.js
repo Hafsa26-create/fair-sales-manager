@@ -16,6 +16,7 @@
         resolveClientReady = resolve;
         rejectClientReady = reject;
     });
+    clientReadyPromise.catch(() => {});
     let user;
     let activeUserId = null;
     let mode = "login";
@@ -1831,7 +1832,9 @@ if (!fairs.length) {
 
     document.addEventListener("DOMContentLoaded", async () => {
         if (!cfg?.supabaseUrl || !cfg?.supabaseKey) {
-            msg("Supabase configuration is missing. Please contact the app owner.", true);
+            const error = new Error("Supabase configuration is missing. Please contact the app owner.");
+            rejectClientReady(error);
+            msg(error.message, true);
             return;
         }
 
