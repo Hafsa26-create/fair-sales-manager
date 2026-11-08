@@ -739,6 +739,8 @@ if (!fairs.length) {
         const totalPurchased = rows.reduce((sum, row) => sum + Number(row.purchased_quantity || 0), 0);
         const totalPersonalProfit = rows.reduce((sum, row) => sum + Number(row.personal_gross_profit || 0), 0);
         const totalPersonalRevenue = rows.reduce((sum, row) => sum + Number(row.personal_revenue || 0), 0);
+        const totalPersonalCost = rows.reduce((sum, row) => sum + Number(row.personal_cogs || 0), 0);
+        const totalPersonalItems = rows.reduce((sum, row) => sum + Number(row.personal_sold_quantity || 0), 0);
         const totalCombinedProfit = rows.reduce((sum, row) => sum + Number(row.combined_gross_profit || 0), 0);
         const totalCombinedRevenue = rows.reduce((sum, row) => sum + Number(row.combined_revenue || 0), 0);
 
@@ -775,6 +777,16 @@ if (!fairs.length) {
                 </table>
             </div>
         ` : '<p class="muted">No global product codes found. Add a product code first.</p>';
+
+        $("personalSalesSummary").innerHTML = `
+            <div class="report">
+                <div>Total personal items sold<b>${totalPersonalItems} pcs</b></div>
+                <div>Total personal revenue<b>${money(totalPersonalRevenue)}</b></div>
+                <div>Total product cost<b>${money(totalPersonalCost)}</b></div>
+                <div>Full personal gross profit<b>${money(totalPersonalProfit)}</b></div>
+                <div>Overall profit margin<b>${totalPersonalRevenue > 0 ? (totalPersonalProfit / totalPersonalRevenue * 100).toFixed(1) : "0.0"}%</b></div>
+            </div>
+        `;
 
         $("purchaseHistory").innerHTML = purchaseHistoryRows.length ? purchaseHistoryRows.map(row => `
             <div class="product-row">
