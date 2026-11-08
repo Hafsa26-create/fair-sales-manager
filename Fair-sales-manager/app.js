@@ -557,6 +557,7 @@ if (!fairs.length) {
         toggle();
 
         if (!fair) {
+            $("fairSalesBreakdown").innerHTML = '<p class="muted">Please select a fair to view its sales breakdown.</p>';
             return;
         }
 
@@ -823,9 +824,13 @@ if (!fairs.length) {
         return all;
     }
 
-    async function loadSalesBreakdowns() {
+    async function loadSalesBreakdowns(selectedFairId = fair?.id) {
         const ownerFairs = fairs.filter(item => item.role === "owner");
-        const fairReports = await Promise.all(ownerFairs.map(async item => {
+        const selectedFair = ownerFairs.find(item => item.id === selectedFairId);
+        if (!selectedFair) {
+            $("fairSalesBreakdown").innerHTML = '<p class="muted">Please select a fair to view its sales breakdown.</p>';
+        }
+        const fairReports = selectedFair ? await Promise.all([selectedFair].map(async item => {
             const [entries, fairProducts, costs] = await Promise.all([
                 fetchAllRows(() => db.from("fair_sales_entries")
                     .select("product_id,quantity,unit_selling_price")
@@ -848,7 +853,7 @@ if (!fairs.length) {
                 grouped.set(code, row);
             }
             return { fair: item, rows: [...grouped.values()].sort((x,y) => x.code.localeCompare(y.code)) };
-        }));
+        })) : [];
 
         const personalEntries = await fetchAllRows(() => db.from("fair_sales_personal_entries")
             .select("product_code,quantity,unit_buying_price,unit_selling_price")
