@@ -445,6 +445,8 @@ if (!fairs.length) {
         ? "No fair created yet. You can create a new fair below."
         : "No fair assigned. Ask the owner to add your account.";
 
+    if (role === "owner") await loadGlobalInventory();
+
     return;
 }
         const snapshot = await getSnapshot(user.id);
@@ -795,10 +797,19 @@ if (!fairs.length) {
 
     async function loadGlobalInventory() {
         if (role !== "owner") return;
-        const [catalog, inventory, purchases, personal, purchaseTotal] = await Promise.all([
-            data(db.from("fair_sales_price_codes")
-                .select("product_code,buying_price,default_selling_price")
-                .order("product_code")),
+
+        // Load the catalog first so dropdowns are not blocked by an unrelated report error.
+        globalCatalog = await data(db.from("fair_sales_price_codes")
+            .select("product_code,buying_price,default_selling_price")
+            .order("product_code"));
+
+        fillGlobalProductSelect("purchaseCode");
+        fillGlobalProductSelect("personalCode");
+        fillGlobalProductSelect("adjustCode");
+        updatePurchasePreview();
+        updatePersonalPreview();
+
+        const results = await Promise.allSettled([
             data(db.rpc("fair_sales_get_global_inventory")),
             data(db.from("fair_sales_product_purchases")
                 .select("id,product_code,quantity,unit_buying_price,purchase_date,note")
@@ -808,21 +819,28 @@ if (!fairs.length) {
                 .order("sale_date", { ascending: false }).limit(50)),
             data(db.rpc("fair_sales_get_global_purchase_total"))
         ]);
-        globalCatalog = catalog || [];
-        globalInventory = inventory || [];
-        globalPurchaseTotal = Number(purchaseTotal || 0);
-        purchaseHistoryRows = purchases || [];
-        personalHistoryRows = personal || [];
+
         const today = new Date().toISOString().slice(0, 10);
         if (!$("purchaseDate").value) $("purchaseDate").value = today;
         if (!$("personalDate").value) $("personalDate").value = today;
         if (!$("adjustDate").value) $("adjustDate").value = today;
-        fillGlobalProductSelect("purchaseCode");
-        fillGlobalProductSelect("personalCode");
-        fillGlobalProductSelect("adjustCode");
+
+        if (results[0].status === "fulfilled") globalInventory = results[0].value || [];
+        else console.error("Global inventory could not load:", results[0].reason);
+        if (results[1].status === "fulfilled") purchaseHistoryRows = results[1].value || [];
+        else console.error("Purchase history could not load:", results[1].reason);
+        if (results[2].status === "fulfilled") personalHistoryRows = results[2].value || [];
+        else console.error("Personal sales history could not load:", results[2].reason);
+        if (results[3].status === "fulfilled") globalPurchaseTotal = Number(results[3].value || 0);
+        else console.error("Purchase total could not load:", results[3].reason);
+
         renderGlobalInventory();
         updatePurchasePreview();
         updatePersonalPreview();
+
+        if (results.some(result => result.status === "rejected")) {
+            msg("Product codes loaded, but some stock summaries could not refresh. Please retry.", true);
+        }
     }
 
     $("purchaseCode").addEventListener("change", updatePurchasePreview);
