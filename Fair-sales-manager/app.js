@@ -1698,9 +1698,16 @@ if (!fairs.length) {
     };
 
 
+    // Prevent a slow catalog lookup from overwriting a new product's manually entered price.
+    let priceLookupSequence = 0;
+
     $("buying").addEventListener("change", async () => {
         const rawPrice = $("buying").value;
         if (rawPrice === "" || role !== "owner") return;
+
+        const lookupSequence = ++priceLookupSequence;
+        const codeAtLookupStart = $("code").value;
+        const defaultPriceAtLookupStart = $("defaultPrice").value;
 
         try {
             const matches = await data(
@@ -1709,24 +1716,40 @@ if (!fairs.length) {
                     .eq("buying_price", Number(rawPrice))
                     .limit(1)
             );
+
+            // Ignore results for an older buying price or a lookup superseded by typing.
+            if (
+                lookupSequence !== priceLookupSequence ||
+                $("buying").value !== rawPrice
+            ) return;
+
             if (matches.length) {
-                $("code").value = matches[0].product_code;
-                $("code").readOnly = true;
-                $("defaultPrice").value = matches[0].default_selling_price ?? "";
+                if ($("code").value === codeAtLookupStart) {
+                    $("code").value = matches[0].product_code;
+                    $("code").readOnly = true;
+                }
+                // Do not replace a fixed price the owner has already started typing.
+                if ($("defaultPrice").value === defaultPriceAtLookupStart) {
+                    $("defaultPrice").value = matches[0].default_selling_price ?? "";
+                }
                 updateExpectedProfit();
                 msg("Existing global code applied: " + matches[0].product_code);
             } else {
                 $("code").readOnly = false;
-                $("defaultPrice").value = "";
+                // Keep any manually entered fixed price for a new product code.
                 updateExpectedProfit();
             }
         } catch (error) {
             console.warn("Could not check global price catalog:", error);
-            $("code").readOnly = false;
+            if (lookupSequence === priceLookupSequence) {
+                $("code").readOnly = false;
+            }
         }
     });
 
     $("buying").addEventListener("input", () => {
+        // Cancel any pending lookup as soon as the buying price is edited.
+        priceLookupSequence += 1;
         if (!$("buying").value) {
             $("code").value = "";
             $("code").readOnly = false;
