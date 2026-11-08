@@ -17,7 +17,7 @@
 
 <body>
   <header>
-    <b class="logo"><HR></b>
+    <b class="logo">HR</b>
 
     <div>
       <strong>Hey Rosella</strong>
@@ -118,14 +118,14 @@
             </label>
 
             <label>
-              Sell price (৳)
+              Selling price (৳)
               <input
                 id="price"
                 type="number"
                 min="0"
                 step=".01"
                 required
-                placeholder="Enter actual price"
+                placeholder="Enter selling price"
               >
             </label>
 
@@ -306,11 +306,11 @@
 
         <div class="card">
           <h2>Product categories</h2>
-          <p class="muted">Buying and fixed prices are visible only to you here. Product codes and fixed prices are shared across all your fairs. Employees see the fixed price and can enter the actual price after bargaining.</p>
+          <p class="muted">Buying and fixed prices are visible only to you here. Product codes and fixed prices are shared across all your fairs. Employees see the fixed price and can enter the selling price after bargaining.</p>
 
           <form id="productform" class="grid">
             <label>
-              Manual price code
+              Product code
               <input id="code" placeholder="A7" maxlength="2" pattern="[A-Za-z][0-9]" title="Use one letter followed by one number, for example A7." autocapitalize="characters" required>
             </label>
 
@@ -328,7 +328,7 @@
             <label>
               Fixed price (৳)
               <input
-                id="fixedprice"
+                id="defaultPrice"
                 type="number"
                 min="0"
                 step=".01"
@@ -348,7 +348,7 @@
             </label>
 
             <button class="secondary span">
-              Save price code
+              Save product code
             </button>
           </form>
 
@@ -494,8 +494,8 @@
   <footer>Fair Sales Manager · Private to your team</footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=34"></script>
-  <script src="app.js?v=34"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
