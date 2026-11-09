@@ -716,7 +716,7 @@ if (!fairs.length) {
             products
                 .map(
                     (p) =>
-                        `<option value="${p.id}">${esc(p.product_code)}</option>`
+                        `<option value="${p.id}">${esc(p.product_code)} — Fixed: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</option>`
                 )
                 .join("");
     }
