@@ -156,6 +156,14 @@
         </form>
 
         <div class="card">
+          <div class="line">
+            <h2>My recent sales</h2>
+            <button id="refreshMySales" class="quiet" type="button">Refresh</button>
+          </div>
+          <div id="myRecentSales" class="muted">Recent synced sales will appear here.</div>
+          <small class="muted">If you entered a sale offline, wait until it syncs before requesting a correction.</small>
+        </div>
+        <div class="card">
           <h2>Entry status</h2>
           <p id="entryStatus" class="muted">
             Your saved sale will be confirmed here.
@@ -442,6 +450,12 @@
         </div>
 
         <div class="card">
+          <h2>Sale correction requests</h2>
+          <p class="muted">Review employee requests before changing saved sales.</p>
+          <div id="correctionRequests" class="muted">No correction requests loaded.</div>
+        </div>
+
+        <div class="card">
           <div class="line">
             <h2>Sales activity</h2>
             <button type="button" id="refresh" class="quiet">
@@ -496,7 +510,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=41"></script>
+  <script src="app.js?v=42"></script>
 
 
   <script>
