@@ -585,6 +585,11 @@ if (!fairs.length) {
 
         if (role === "employee") {
             await refreshEmployeeItemsSold();
+            try { await loadMyRecentSales(); }
+            catch (error) {
+                console.warn("Could not load employee recent sales:", error);
+                $("myRecentSales").textContent = "Could not load recent sales. Tap Refresh to try again.";
+            }
         }
 
         if (role === "owner") {
@@ -642,6 +647,120 @@ if (!fairs.length) {
         const count = $("employeeItemsTotal");
         if (count) count.textContent = syncedItems + pendingItems;
     }
+
+    async function loadMyRecentSales() {
+        const container = $("myRecentSales");
+        if (!container || role !== "employee" || !fair) return;
+        if (!navigator.onLine) {
+            container.innerHTML = '<p class="muted">Connect to the internet to load recent synced sales.</p>';
+            return;
+        }
+        const rows = await data(db.rpc("fair_sales_get_my_recent_sales", { p_fair_id: fair.id }));
+        container.innerHTML = rows.length ? rows.map(row => {
+            const status = row.correction_status === "pending" ? "Correction pending"
+                : row.correction_status === "approved" ? "Last correction approved"
+                : row.correction_status === "rejected" ? "Last correction rejected"
+                : "No correction requested";
+            const canRequest = row.correction_status !== "pending";
+            return `<div class="expense-row">
+                <span class="expense-details">
+                    <b>${esc(row.product_code)} · ${row.quantity} pcs</b><br>
+                    <small>${esc(new Date(row.created_at).toLocaleString())} · ${money(row.unit_selling_price)} each</small><br>
+                    <small>${esc(status)}</small>
+                </span>
+                <span class="expense-actions">
+                    <b>${money(Number(row.quantity) * Number(row.unit_selling_price))}</b>
+                    ${canRequest ? `<button type="button" class="secondary" data-request-correction="${esc(row.sale_id)}">Request correction</button>` : ""}
+                </span>
+            </div>`;
+        }).join("") : '<p class="muted">No synced sales yet.</p>';
+    }
+
+    async function requestSaleCorrection(saleId) {
+        if (role !== "employee" || !fair || !navigator.onLine) {
+            msg("Connect to the internet before requesting a correction.", true);
+            return;
+        }
+        const recent = await data(db.rpc("fair_sales_get_my_recent_sales", { p_fair_id: fair.id }));
+        const sale = recent.find(item => item.sale_id === saleId);
+        if (!sale) throw new Error("Sale not found in your recent sales.");
+        const codeList = products.filter(p => p.active).map(p => p.product_code).join(", ");
+        const productCode = window.prompt("Correct product code? Available: " + codeList, sale.product_code);
+        if (productCode === null) return;
+        const selected = products.find(p => p.active && p.product_code.toLowerCase() === productCode.trim().toLowerCase());
+        if (!selected) throw new Error("That product code is not available in this fair.");
+        const quantityText = window.prompt("Correct quantity:", String(sale.quantity));
+        if (quantityText === null) return;
+        const quantity = Number(quantityText);
+        if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Quantity must be a whole number of at least 1.");
+        const priceText = window.prompt("Correct per-piece selling price (৳):", String(sale.unit_selling_price));
+        if (priceText === null) return;
+        const price = Number(priceText);
+        if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid non-negative selling price.");
+        const reason = window.prompt("Why does this sale need correction? (3–500 characters)");
+        if (reason === null) return;
+        if (reason.trim().length < 3 || reason.trim().length > 500) throw new Error("Please enter a reason between 3 and 500 characters.");
+        await data(db.rpc("fair_sales_request_sale_correction", {
+            p_sale_id: saleId,
+            p_product_id: selected.id,
+            p_quantity: quantity,
+            p_unit_selling_price: price,
+            p_reason: reason.trim()
+        }));
+        msg("Correction request sent to the owner.");
+        await loadMyRecentSales();
+    }
+
+    async function loadCorrectionRequests() {
+        const container = $("correctionRequests");
+        if (!container || role !== "owner" || !fair) return;
+        const rows = await data(db.rpc("fair_sales_get_correction_requests", { p_fair_id: fair.id }));
+        container.innerHTML = rows.length ? rows.map(row => `
+            <div class="expense-row">
+                <span class="expense-details">
+                    <b>${esc(row.requested_by_email || "Employee")} · ${esc(row.original_product_code)} → ${esc(row.requested_product_code)}</b><br>
+                    <small>Before: ${row.original_quantity} pcs × ${money(row.original_unit_selling_price)}</small><br>
+                    <small>Requested: ${row.requested_quantity} pcs × ${money(row.requested_unit_selling_price)}</small><br>
+                    <small>Reason: ${esc(row.reason)}</small><br>
+                    <small>${esc(new Date(row.created_at).toLocaleString())}</small>
+                </span>
+                <span class="expense-actions">
+                    <button type="button" class="secondary" data-correction-decision="approve" data-request-id="${esc(row.request_id)}">Approve</button>
+                    <button type="button" class="expense-delete" data-correction-decision="reject" data-request-id="${esc(row.request_id)}">Reject</button>
+                </span>
+            </div>
+        `).join("") : '<p class="muted">No pending correction requests.</p>';
+    }
+
+    async function decideCorrection(requestId, approve) {
+        if (role !== "owner" || !fair) throw new Error("Only the owner can decide correction requests.");
+        const question = approve
+            ? "Approve this correction? The saved sale and fair totals will be updated."
+            : "Reject this correction? The original sale will remain unchanged.";
+        if (!window.confirm(question)) return;
+        await data(db.rpc("fair_sales_decide_sale_correction", {
+            p_request_id: requestId,
+            p_approve: approve
+        }));
+        msg(approve ? "Correction approved and sale updated." : "Correction rejected.");
+        await Promise.all([report(), loadCorrectionRequests()]);
+    }
+
+    $("myRecentSales")?.addEventListener("click", event => {
+        const button = event.target.closest("[data-request-correction]");
+        if (!button) return;
+        safe(() => requestSaleCorrection(button.dataset.requestCorrection));
+    });
+
+    $("refreshMySales")?.addEventListener("click", () => safe(loadMyRecentSales));
+    $("correctionRequests")?.addEventListener("click", event => {
+        const button = event.target.closest("[data-correction-decision]");
+        if (!button) return;
+        safe(() => decideCorrection(
+            button.dataset.requestId,
+            button.dataset.correctionDecision === "approve"
+        ));
+    });
 
     async function loadProducts() {
         try {
@@ -1180,6 +1299,12 @@ if (!fairs.length) {
             ${missingCosts ? `<p class="muted">${missingCosts} sale(s) have no recorded buying cost; profit may be overstated.</p>` : ""}
         ` : '<p class="muted">No sales recorded yet.</p>';
 
+        try { await loadCorrectionRequests(); }
+        catch (error) {
+            console.warn("Could not load correction requests:", error);
+            if ($("correctionRequests")) $("correctionRequests").textContent = "Could not load requests. Use Refresh to try again.";
+        }
+
         renderExpenses();
         $("expensePager").innerHTML = totalExpenseCount ? `
             <span>Showing ${expensesFrom + 1}–${Math.min(expensesFrom + ee.length, totalExpenseCount)} of ${totalExpenseCount} expenses</span>
@@ -1481,6 +1606,11 @@ if (!fairs.length) {
             $("total").textContent = money(0);
 
             await refreshEmployeeItemsSold();
+            if (!queuedForSync) {
+                try { await loadMyRecentSales(); } catch (recentError) {
+                    console.warn("Recent sales refresh failed:", recentError);
+                }
+            }
 
             const pendingCount = await updatePendingStatus();
             msg(pendingCount
