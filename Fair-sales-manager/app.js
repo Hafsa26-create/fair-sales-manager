@@ -5,6 +5,30 @@
 
     const $ = (id) => document.getElementById(id);
 
+    // Owner dashboard section navigation: existing cards and workflows stay intact.
+    function showOwnerPage(page) {
+        const pages = ["dashboard", "sales", "products", "employees", "finance", "settings"];
+        const selected = pages.includes(page) ? page : "dashboard";
+        document.querySelectorAll("#owner [data-owner-page]").forEach((element) => {
+            element.classList.toggle("hidden", element.dataset.ownerPage !== selected);
+        });
+        document.querySelectorAll("#ownerNavigation [data-owner-page]").forEach((button) => {
+            const active = button.dataset.ownerPage === selected;
+            button.classList.toggle("active", active);
+            if (active) button.setAttribute("aria-current", "page");
+            else button.removeAttribute("aria-current");
+        });
+    }
+
+    const ownerNavigation = document.getElementById("ownerNavigation");
+    if (ownerNavigation) {
+        ownerNavigation.addEventListener("click", (event) => {
+            const button = event.target.closest("[data-owner-page]");
+            if (button) showOwnerPage(button.dataset.ownerPage);
+        });
+    }
+    showOwnerPage("dashboard");
+
     const cfg = window.FAIR_APP_CONFIG;
     let S = window.supabase;
 
