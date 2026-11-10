@@ -174,7 +174,16 @@
       </section>
 
       <section id="owner" class="hidden">
-        <div class="stats">
+        <nav id="ownerNavigation" class="owner-nav" aria-label="Owner dashboard sections">
+          <button type="button" class="owner-nav-button active" data-owner-page="dashboard" aria-current="page"><strong>Dashboard</strong><small>Summary</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="sales"><strong>Sales</strong><small>Sales activity, daily report</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="products"><strong>Products &amp; Inventory</strong><small>Codes, purchases, stock</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="employees"><strong>Employees</strong><small>Assignments, performance</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="finance"><strong>Expenses &amp; Finance</strong><small>Costs, commission, profit</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="settings"><strong>Fair Settings</strong><small>Fair details, management</small></button>
+        </nav>
+
+        <div class="stats" data-owner-page="dashboard">
           <div class="stat">
             <small>Total sales</small>
             <b id="salesTotal">৳0</b>
@@ -196,7 +205,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="dashboard">
           <small class="eyebrow">OWNER </small>
           <h2>Fair report</h2>
 
@@ -227,7 +236,7 @@
           </small>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="settings">
           <h2>Create a fair</h2>
 
           <form id="fairform" class="grid">
@@ -288,7 +297,7 @@
         </div>
 
         
-<div class="card">
+<div class="card" data-owner-page="settings">
   <h2>Manage fairs</h2>
   <p class="muted">
     Select a fair to manage or delete it.
@@ -312,7 +321,7 @@
 </div>
 
 
-        <div class="card">
+        <div class="card" data-owner-page="products">
           <h2>Product categories</h2>
           <p class="muted">Buying and fixed prices are visible only to you here. Product codes and fixed prices are shared across all your fairs. Employees see the fixed price and can enter the selling price after bargaining.</p>
 
@@ -369,7 +378,7 @@
         </div>
 
 
-        <div class="card">
+        <div class="card" data-owner-page="products">
           <small class="eyebrow">GLOBAL · OWNER ONLY</small>
           <h2>Product purchases & total stock</h2>
           <p class="muted">All fairs use this same stock balance. Purchases increase stock; fair sales and personal sales reduce it.</p>
@@ -389,21 +398,21 @@
           <div id="purchaseHistory"></div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="sales">
           <small class="eyebrow">OWNER ONLY · DAILY REPORT</small>
           <h2>Daily Sales &amp; Commission</h2>
           <p class="muted">Each fair day is shown separately. Daily commission is calculated as 10% of that day's total sales. Existing reports and sales entries remain unchanged.</p>
           <div id="dailySalesCommission"><p class="muted">Daily report will load after Owner login.</p></div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="finance">
           <small class="eyebrow">OWNER ONLY · SEPARATE BY FAIR</small>
           <h2>Fair-wise sales breakdown</h2>
           <p class="muted">Each fair has its own product-wise sales, revenue, cost and gross profit report. No personal sales are included here.</p>
           <div id="fairSalesBreakdown"><p class="muted">Fair-wise report will load after Owner login.</p></div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="finance">
           <small class="eyebrow">OWNER ONLY</small>
           <h2>My personal sales</h2>
           <p class="muted">Your own sales are separate from employee sales. Buying price is filled automatically from the global product code.</p>
@@ -429,7 +438,7 @@
           <div id="personalHistory"></div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="products">
           <h2>Inventory </h2>
 
           <form id="adjustform" class="grid">
@@ -441,7 +450,7 @@
           </form>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="employees">
           <h2>Add employee</h2>
 
           <p class="muted">
@@ -461,13 +470,13 @@
           </form>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="employees">
           <h2>Sale correction requests</h2>
           <p class="muted">Review employee requests before changing saved sales.</p>
           <div id="correctionRequests" class="muted">No correction requests loaded.</div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="sales">
           <div class="line">
             <h2>Sales activity</h2>
             <button type="button" id="refresh" class="quiet">
@@ -480,7 +489,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" data-owner-page="finance">
           <h2>Additional expenses</h2>
 
           <form id="expenseform" class="grid">
@@ -522,7 +531,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=44"></script>
+  <script src="app.js?v=45"></script>
 
 
   <script>
