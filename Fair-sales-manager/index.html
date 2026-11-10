@@ -375,6 +375,25 @@
           </form>
 
           <div id="productList"></div>
+          <dialog id="productEditDialog" class="product-edit-dialog">
+            <form id="productEditForm" class="product-edit-form">
+              <h3>Edit product code &amp; name</h3>
+              <input id="editProductOldCode" type="hidden">
+              <label>
+                Product code
+                <input id="editProductCode" maxlength="2" pattern="[A-Za-z][0-9]" title="One letter followed by one number, for example C5." required>
+              </label>
+              <label>
+                Product name
+                <input id="editProductName" maxlength="80" placeholder="Ring, Jhumka, Bracelet">
+              </label>
+              <small class="muted">You can change both fields here. Leave Product name blank if you do not want a name.</small>
+              <div class="product-edit-actions">
+                <button type="button" class="quiet" id="cancelProductEdit" onclick="document.getElementById('productEditDialog').close()">Cancel</button>
+                <button type="submit" class="primary" id="saveProductEdit">Save changes</button>
+              </div>
+            </form>
+          </dialog>
         </div>
 
 
@@ -531,7 +550,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=45"></script>
+  <script src="app.js?v=46"></script>
 
 
   <script>
