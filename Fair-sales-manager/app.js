@@ -498,7 +498,7 @@ if (!fairs.length) {
 
         const catalog = await data(
             db.from("fair_sales_price_codes")
-                .select("product_code,buying_price,default_selling_price")
+                .select("product_code,buying_price,default_selling_price,display_name")
                 .order("product_code")
         );
 
@@ -510,14 +510,17 @@ if (!fairs.length) {
                     p_product_code: item.product_code
                 })
             );
+            const productUpdate = {};
             if (item.default_selling_price !== null && item.default_selling_price !== undefined) {
-                await data(
-                    db.from("fair_sales_products")
-                        .update({ default_selling_price: Number(item.default_selling_price) })
-                        .eq("id", productId)
-                        .eq("fair_id", fairId)
-                );
+                productUpdate.default_selling_price = Number(item.default_selling_price);
             }
+            productUpdate.display_name = item.display_name || null;
+            await data(
+                db.from("fair_sales_products")
+                    .update(productUpdate)
+                    .eq("id", productId)
+                    .eq("fair_id", fairId)
+            );
         }
     }
 
@@ -766,7 +769,7 @@ if (!fairs.length) {
         try {
             products = await data(
                 db.from("fair_sales_products")
-                    .select("id,fair_id,product_code,active,default_selling_price")
+                    .select("id,fair_id,product_code,active,default_selling_price,display_name")
                     .eq("fair_id", fair.id)
                     .eq("active", true)
                     .order("product_code")
@@ -775,8 +778,8 @@ if (!fairs.length) {
                 userId: user.id, fairs, productsByFair: {}
             };
             snapshot.productsByFair = snapshot.productsByFair || {};
-            snapshot.productsByFair[fair.id] = products.map(({id,fair_id,product_code,active,default_selling_price}) => ({
-                id, fair_id, product_code, active, default_selling_price
+            snapshot.productsByFair[fair.id] = products.map(({id,fair_id,product_code,active,default_selling_price,display_name}) => ({
+                id, fair_id, product_code, active, default_selling_price, display_name
             }));
             snapshot.selectedFairId = fair.id;
             snapshot.fairs = fairs;
@@ -815,11 +818,12 @@ if (!fairs.length) {
                     (p) => `
                         <div class="product-row">
                             <span>
-                                <b>${esc(p.product_code)}</b><br>
+                                <b>${esc(p.product_code)}${p.display_name ? " — " + esc(p.display_name) : ""}</b><br>
                                 <small>Buying: ${p.buying_price === undefined ? "Not set" : money(p.buying_price)}</small>
                             </span>
                             <span>
                                 <b>Default selling: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</b><br>
+                                <button type="button" class="quiet product-name-edit" data-product-code="${esc(p.product_code)}" data-display-name="${esc(p.display_name || "")}">Edit name</button>
                                 <button type="button" class="quiet product-code-edit" data-product-code="${esc(p.product_code)}">Edit code</button>
                                 <button type="button" class="quiet product-default-price-edit" data-product-code="${esc(p.product_code)}" data-default-price="${p.default_selling_price ?? ""}">Edit default price</button>
                             </span>
@@ -835,7 +839,7 @@ if (!fairs.length) {
             products
                 .map(
                     (p) =>
-                        `<option value="${p.id}">${esc(p.product_code)} — Fixed: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</option>`
+                        `<option value="${p.id}">${esc(p.product_code)}${p.display_name ? " — " + esc(p.display_name) : ""} — Fixed: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</option>`
                 )
                 .join("");
     }
@@ -851,7 +855,7 @@ if (!fairs.length) {
         if (!select) return;
         select.innerHTML = '<option value="">Choose product code</option>' +
             globalCatalog.map(item =>
-                `<option value="${esc(item.product_code)}">${esc(item.product_code)} — Buy ${money(item.buying_price)}</option>`
+                `<option value="${esc(item.product_code)}">${esc(item.product_code)}${item.display_name ? " — " + esc(item.display_name) : ""} — Buy ${money(item.buying_price)}</option>`
             ).join("");
     }
 
@@ -1043,7 +1047,15 @@ if (!fairs.length) {
         if (role !== "owner") return;
 
         // Load the catalog first so dropdowns are not blocked by an unrelated report error.
-        globalCatalog = await data(db.rpc("fair_sales_get_global_product_codes"));
+        const [catalogRows, catalogNames] = await Promise.all([
+            data(db.rpc("fair_sales_get_global_product_codes")),
+            data(db.from("fair_sales_price_codes").select("product_code,display_name"))
+        ]);
+        const nameMap = new Map(catalogNames.map(item => [item.product_code, item.display_name]));
+        globalCatalog = (catalogRows || []).map(item => ({
+            ...item,
+            display_name: nameMap.get(item.product_code) || null
+        }));
 
         fillGlobalProductSelect("purchaseCode");
         fillGlobalProductSelect("personalCode");
@@ -1850,6 +1862,37 @@ if (!fairs.length) {
     // Rename a global product code while preserving linked purchase, stock,
     // personal-sale and fair-sales history through database foreign-key cascades.
     $("productList").addEventListener("click", async (event) => {
+        const nameButton = event.target.closest(".product-name-edit");
+        if (nameButton) {
+            if (role !== "owner" || !user) {
+                msg("Only the owner can edit product names.", true);
+                return;
+            }
+            const code = nameButton.dataset.productCode;
+            const currentName = nameButton.dataset.displayName || "";
+            const enteredName = window.prompt("Enter a display name for " + code + " (leave blank to clear):", currentName);
+            if (enteredName === null) return;
+            const displayName = enteredName.trim();
+            if (displayName.length > 80) {
+                msg("Product name must be 80 characters or fewer.", true);
+                return;
+            }
+            nameButton.disabled = true;
+            try {
+                await data(db.rpc("fair_sales_update_product_name", {
+                    p_product_code: code,
+                    p_display_name: displayName
+                }));
+                await Promise.all([loadProducts(), loadGlobalInventory()]);
+                msg("Product name updated for " + code + " across your fairs.");
+            } catch (error) {
+                msg(error.message || "Could not update product name.", true);
+            } finally {
+                nameButton.disabled = false;
+            }
+            return;
+        }
+
         const priceButton = event.target.closest(".product-default-price-edit");
         if (priceButton) {
             if (role !== "owner" || !user) {
@@ -1951,6 +1994,11 @@ if (!fairs.length) {
                 throw Error("Enter a valid buying price of zero or more.");
             }
 
+            const displayName = $("displayName").value.trim();
+            if (displayName.length > 80) {
+                throw Error("Product name must be 80 characters or fewer.");
+            }
+
             const sellingPrice = Number($("defaultPrice").value);
             if (!Number.isFinite(sellingPrice) || sellingPrice < 0 || $("defaultPrice").value === "") {
                 throw Error("Enter a valid default selling price of zero or more.");
@@ -1967,6 +2015,10 @@ if (!fairs.length) {
             );
 
             // Propagate the saved global mapping to every other fair owned by this account.
+            await data(db.rpc("fair_sales_update_product_name", {
+                p_product_code: productCode,
+                p_display_name: displayName
+            }));
             await syncGlobalPriceCodesToAllFairs();
 
             e.target.reset();
