@@ -1449,17 +1449,20 @@ if (!fairs.length) {
                 return sum + (unitCost === undefined ? 0 : Number(item.quantity || 0) * unitCost);
             }, 0);
             const missingCosts = entries.filter(item => !costMap.has(item.product_id)).length;
+            const commissionRate = 0.10;
+            const totalCommission = totalSales * commissionRate;
 
             sheet.innerHTML = `
                 <div class="report employee-sheet-summary">
                     <div>Total items<b>${totalItems}</b></div>
                     <div>Total sales<b>${money(totalSales)}</b></div>
+                    <div>Commission (10%)<b>${money(totalCommission)}</b></div>
                     <div>Gross profit<b>${money(totalSales - totalCost)}</b></div>
                 </div>
                 ${entries.length ? `
                     <div style="overflow:auto">
                         <table class="sales-table">
-                            <thead><tr><th>Time</th><th>Product</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Cost</th><th>Gross profit</th></tr></thead>
+                            <thead><tr><th>Time</th><th>Product</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Commission (10%)</th><th>Cost</th><th>Gross profit</th></tr></thead>
                             <tbody>${entries.map(item => {
                                 const product = productMap.get(item.product_id);
                                 const sale = Number(item.quantity) * Number(item.unit_selling_price);
@@ -1471,6 +1474,7 @@ if (!fairs.length) {
                                     <td>${item.quantity}</td>
                                     <td>${money(item.unit_selling_price)}</td>
                                     <td>${money(sale)}</td>
+                                    <td>${money(sale * commissionRate)}</td>
                                     <td>${rowCost === null ? "Missing" : money(rowCost)}</td>
                                     <td>${rowCost === null ? "—" : money(sale - rowCost)}</td>
                                 </tr>`;
