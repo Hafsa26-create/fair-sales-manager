@@ -176,7 +176,8 @@
       <section id="owner" class="hidden">
         <nav id="ownerNavigation" class="owner-nav" aria-label="Owner dashboard sections">
           <button type="button" class="owner-nav-button active" data-owner-page="dashboard" aria-current="page"><strong>Dashboard</strong><small>Summary</small></button>
-          <button type="button" class="owner-nav-button" data-owner-page="sales"><strong>Sales</strong><small>Sales activity, daily report</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="sales-activity"><strong>Sales Activity</strong><small>Daily report, sale entries</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="fair-sales"><strong>Fair Sales</strong><small>Fair-wise sales, revenue</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="products"><strong>Products &amp; Inventory</strong><small>Codes, purchases, stock</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="employees"><strong>Employees</strong><small>Assignments, performance</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="finance"><strong>Expenses &amp; Finance</strong><small>Costs, commission, profit</small></button>
@@ -418,14 +419,14 @@
           <div id="purchaseHistory"></div>
         </div>
 
-        <div class="card" data-owner-page="sales">
+        <div class="card" data-owner-page="sales-activity">
           <small class="eyebrow">OWNER ONLY · DAILY REPORT</small>
           <h2>Daily Sales &amp; Commission</h2>
           <p class="muted">Each fair day is shown separately. Daily commission is calculated as 10% of that day's total sales. Existing reports and sales entries remain unchanged.</p>
           <div id="dailySalesCommission"><p class="muted">Daily report will load after Owner login.</p></div>
         </div>
 
-        <div class="card" data-owner-page="finance">
+        <div class="card" data-owner-page="fair-sales">
           <small class="eyebrow">OWNER ONLY · SEPARATE BY FAIR</small>
           <h2>Fair-wise sales breakdown</h2>
           <p class="muted">Each fair has its own product-wise sales, revenue, cost and gross profit report. No personal sales are included here.</p>
@@ -496,7 +497,7 @@
           <div id="correctionRequests" class="muted">No correction requests loaded.</div>
         </div>
 
-        <div class="card" data-owner-page="sales">
+        <div class="card" data-owner-page="sales-activity">
           <div class="line">
             <h2>Sales activity</h2>
             <button type="button" id="refresh" class="quiet">
@@ -551,7 +552,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=48"></script>
+  <script src="app.js?v=49"></script>
 
 
   <script>
