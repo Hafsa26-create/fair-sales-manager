@@ -848,7 +848,7 @@ if (!fairs.length) {
                             <span>
                                 <b>Default selling: ${p.default_selling_price === null || p.default_selling_price === undefined ? "Not set" : money(p.default_selling_price)}</b><br>
                                 <button type="button" class="quiet product-name-edit" data-product-code="${esc(p.product_code)}" data-display-name="${esc(p.display_name || "")}">Edit name</button>
-                                <button type="button" class="quiet product-code-edit" data-product-code="${esc(p.product_code)}">Edit code</button>
+                                <button type="button" class="quiet product-code-edit" data-product-code="${esc(p.product_code)}" data-display-name="${esc(p.display_name || "")}">Edit code / name</button>
                                 <button type="button" class="quiet product-default-price-edit" data-product-code="${esc(p.product_code)}" data-default-price="${p.default_selling_price ?? ""}">Edit default price</button>
                             </span>
                         </div>
@@ -1952,28 +1952,52 @@ if (!fairs.length) {
         const button = event.target.closest(".product-code-edit");
         if (!button) return;
         if (role !== "owner" || !user) {
-            msg("Only the owner can edit product codes.", true);
+            msg("Only the owner can edit product codes and names.", true);
             return;
         }
+
         const oldCode = button.dataset.productCode;
-        const entered = window.prompt("Enter the new product code (one capital letter and one digit):", oldCode);
-        if (entered === null) return;
-        const newCode = entered.trim().toUpperCase();
+        const currentName = button.dataset.displayName || "";
+        const enteredCode = window.prompt(
+            "Enter the product code (one capital letter and one digit):",
+            oldCode
+        );
+        if (enteredCode === null) return;
+
+        const newCode = enteredCode.trim().toUpperCase();
         if (!/^[A-Z][0-9]$/.test(newCode)) {
             msg("Use one capital letter followed by one number, for example A7.", true);
             return;
         }
-        if (newCode === oldCode) return;
+
+        const enteredName = window.prompt(
+            "Enter or edit the product name (for example Ring or Jhumka). Leave blank to remove the name:",
+            currentName
+        );
+        if (enteredName === null) return;
+
+        const displayName = enteredName.trim();
+        if (displayName.length > 80) {
+            msg("Product name must be 80 characters or fewer.", true);
+            return;
+        }
+
         button.disabled = true;
         try {
-            await data(db.rpc("fair_sales_rename_price_code", {
-                p_old_product_code: oldCode,
-                p_new_product_code: newCode
+            if (newCode !== oldCode) {
+                await data(db.rpc("fair_sales_rename_price_code", {
+                    p_old_product_code: oldCode,
+                    p_new_product_code: newCode
+                }));
+            }
+            await data(db.rpc("fair_sales_update_product_name", {
+                p_product_code: newCode,
+                p_display_name: displayName
             }));
             await Promise.all([loadProducts(), loadGlobalInventory()]);
-            msg("Product code " + oldCode + " changed to " + newCode + " across your fairs.");
+            msg("Product saved: " + newCode + (displayName ? " — " + displayName : "") + ".");
         } catch (error) {
-            msg(error.message || "Could not update product code.", true);
+            msg(error.message || "Could not update product code and name.", true);
         } finally {
             button.disabled = false;
         }
