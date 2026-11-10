@@ -536,7 +536,7 @@ footer {
 @media (max-width: 700px) {
     .owner-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding: 9px; top: 64px; margin-bottom: 16px; }
     .owner-nav-button { padding: 10px; }
-    .owner-nav-button strong { font-size: 14px; }
+    .owner-nav-button strong { font-size: 16px; }
     .owner-nav-button small { font-size: 11px; }
 }
 
