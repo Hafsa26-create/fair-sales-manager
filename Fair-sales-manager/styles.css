@@ -361,6 +361,29 @@ small {
     color: var(--ink);
 }
 
+.employee-sales-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 14px 0 18px;
+}
+.employee-sheet-tab {
+    border: 1px solid #EBD3DC;
+    border-radius: 10px;
+    background: #FFF9F5;
+    color: #512B3A;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.employee-sheet-tab.active {
+    background: #512B3A;
+    color: #FFFFFF;
+    border-color: #512B3A;
+}
+.employee-sheet-summary { margin-bottom: 14px; }
+.employee-sheet-tab:focus-visible { outline: 3px solid #B75B7C; outline-offset: 2px; }
+
 .sales-table {
     width: 100%;
     border-collapse: collapse;
