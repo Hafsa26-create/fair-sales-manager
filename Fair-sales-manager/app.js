@@ -9,7 +9,9 @@
     function showOwnerPage(page) {
         const pages = ["dashboard", "sales", "products", "employees", "finance", "settings"];
         const selected = pages.includes(page) ? page : "dashboard";
-        document.querySelectorAll("#owner [data-owner-page]").forEach((element) => {
+        // Only hide/show the owner content panels. Navigation buttons must
+        // remain visible so the owner can switch between all six sections.
+        document.querySelectorAll("#owner > [data-owner-page]").forEach((element) => {
             element.classList.toggle("hidden", element.dataset.ownerPage !== selected);
         });
         document.querySelectorAll("#ownerNavigation [data-owner-page]").forEach((button) => {
