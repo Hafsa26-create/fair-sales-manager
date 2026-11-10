@@ -60,6 +60,7 @@
     let globalPurchaseTotal = 0;
     let salesPage = 0;
     let expensesPage = 0;
+    let selectedEmployeeSheetId = null;
     const REPORT_PAGE_SIZE = 50;
     let channel = null;
 
@@ -571,6 +572,7 @@ if (!fairs.length) {
         finance = null;
         salesPage = 0;
         expensesPage = 0;
+        selectedEmployeeSheetId = null;
         products = [];
 
         if (fair && user) {
@@ -1353,8 +1355,153 @@ if (!fairs.length) {
                 <button type="button" class="quiet" data-expenses-page="1" ${expensesPage + 1 >= totalExpensePages ? "disabled" : ""}>Next</button>
             </div>
         ` : "";
+        await loadEmployeeSalesSheets(currentFairId);
     }
 
+
+    // Each employee gets an independent sheet within the selected fair.
+    // Membership IDs identify the employee; sales are filtered by entered_by.
+    async function loadEmployeeSalesSheets(currentFairId = fair?.id) {
+        if (role !== "owner" || !currentFairId || !fair || fair.id !== currentFairId) return;
+
+        const tabs = $("employeeSalesTabs");
+        const sheet = $("salesList");
+        if (!tabs || !sheet) return;
+
+        tabs.innerHTML = '<span class="muted">Loading employees...</span>';
+        sheet.innerHTML = '<p class="muted">Loading employee sales...</p>';
+
+        try {
+            const members = await data(
+                db.from("fair_sales_memberships")
+                    .select("user_id,created_at")
+                    .eq("fair_id", currentFairId)
+                    .eq("role", "employee")
+                    .order("created_at", { ascending: true })
+            );
+
+            if (!fair || fair.id !== currentFairId) return;
+
+            const employees = members || [];
+            if (!employees.length) {
+                selectedEmployeeSheetId = null;
+                tabs.innerHTML = "";
+                sheet.innerHTML = '<p class="muted">No employees are assigned to this fair yet.</p>';
+                return;
+            }
+
+            if (!employees.some(item => item.user_id === selectedEmployeeSheetId)) {
+                selectedEmployeeSheetId = employees[0].user_id;
+            }
+
+            tabs.innerHTML = employees.map((employee, index) => {
+                const active = employee.user_id === selectedEmployeeSheetId;
+                return `<button type="button" class="employee-sheet-tab${active ? " active" : ""}"
+                    role="tab" aria-selected="${active}" data-employee-sheet-id="${esc(employee.user_id)}">
+                    Employee ${index + 1}
+                </button>`;
+            }).join("");
+
+            await renderEmployeeSalesSheet(selectedEmployeeSheetId, employees);
+        } catch (error) {
+            console.error("Employee sales sheets could not load:", error);
+            tabs.innerHTML = "";
+            sheet.innerHTML = '<p class="muted">Could not load employee sheets. Use Refresh to try again.</p>';
+        }
+    }
+
+    async function renderEmployeeSalesSheet(employeeId, employees = null) {
+        if (role !== "owner" || !fair || !employeeId) return;
+        const currentFairId = fair.id;
+        const sheet = $("salesList");
+        if (!sheet) return;
+
+        selectedEmployeeSheetId = employeeId;
+        if (employees) {
+            $("employeeSalesTabs").querySelectorAll("[data-employee-sheet-id]").forEach(button => {
+                const active = button.dataset.employeeSheetId === employeeId;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-selected", String(active));
+            });
+        }
+
+        sheet.innerHTML = '<p class="muted">Loading this employee\'s sales...</p>';
+        try {
+            const [entries, costs] = await Promise.all([
+                fetchAllRows(() => db.from("fair_sales_entries")
+                    .select("*")
+                    .eq("fair_id", currentFairId)
+                    .eq("entered_by", employeeId)
+                    .order("created_at", { ascending: false })),
+                data(db.from("fair_sales_product_costs")
+                    .select("product_id,buying_price")
+                    .eq("fair_id", currentFairId))
+            ]);
+
+            if (!fair || fair.id !== currentFairId || selectedEmployeeSheetId !== employeeId) return;
+
+            const costMap = new Map((costs || []).map(item => [item.product_id, Number(item.buying_price)]));
+            const productMap = new Map(products.map(item => [item.id, item]));
+            const totalItems = entries.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+            const totalSales = entries.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_selling_price || 0), 0);
+            const totalCost = entries.reduce((sum, item) => {
+                const unitCost = costMap.get(item.product_id);
+                return sum + (unitCost === undefined ? 0 : Number(item.quantity || 0) * unitCost);
+            }, 0);
+            const missingCosts = entries.filter(item => !costMap.has(item.product_id)).length;
+
+            sheet.innerHTML = `
+                <div class="report employee-sheet-summary">
+                    <div>Total items<b>${totalItems}</b></div>
+                    <div>Total sales<b>${money(totalSales)}</b></div>
+                    <div>Gross profit<b>${money(totalSales - totalCost)}</b></div>
+                </div>
+                ${entries.length ? `
+                    <div style="overflow:auto">
+                        <table class="sales-table">
+                            <thead><tr><th>Time</th><th>Product</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Cost</th><th>Gross profit</th></tr></thead>
+                            <tbody>${entries.map(item => {
+                                const product = productMap.get(item.product_id);
+                                const sale = Number(item.quantity) * Number(item.unit_selling_price);
+                                const unitCost = costMap.get(item.product_id);
+                                const rowCost = unitCost === undefined ? null : Number(item.quantity) * unitCost;
+                                return `<tr>
+                                    <td>${esc(new Date(item.created_at).toLocaleString())}</td>
+                                    <td>${esc(product?.product_code || "Product")}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${money(item.unit_selling_price)}</td>
+                                    <td>${money(sale)}</td>
+                                    <td>${rowCost === null ? "Missing" : money(rowCost)}</td>
+                                    <td>${rowCost === null ? "—" : money(sale - rowCost)}</td>
+                                </tr>`;
+                            }).join("")}</tbody>
+                        </table>
+                    </div>
+                    ${missingCosts ? `<p class="muted">${missingCosts} sale(s) have no recorded buying cost; gross profit may be understated.</p>` : ""}
+                ` : '<p class="muted">No sales recorded by this employee for the selected fair yet.</p>'}
+            `;
+        } catch (error) {
+            console.error("Employee sales sheet failed:", error);
+            if (fair?.id === currentFairId && selectedEmployeeSheetId === employeeId) {
+                sheet.innerHTML = '<p class="muted">Could not load this employee\'s sales. Use Refresh to try again.</p>';
+            }
+        }
+    }
+
+    const employeeSalesTabs = $("employeeSalesTabs");
+    if (employeeSalesTabs) {
+        employeeSalesTabs.addEventListener("click", event => {
+            const button = event.target.closest("[data-employee-sheet-id]");
+            if (!button) return;
+            const employeeId = button.dataset.employeeSheetId;
+            employeeSalesTabs.querySelectorAll("[data-employee-sheet-id]").forEach(tab => {
+                const active = tab === button;
+                tab.classList.toggle("active", active);
+                tab.setAttribute("aria-selected", String(active));
+            });
+            renderEmployeeSalesSheet(employeeId);
+        });
+    }
 
     // Separate owner-only daily sales and 10% commission report.
     // This is an additional report; it does not change the existing fair report.
