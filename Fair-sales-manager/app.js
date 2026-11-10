@@ -1956,33 +1956,33 @@ if (!fairs.length) {
             return;
         }
 
-        const oldCode = button.dataset.productCode;
-        const currentName = button.dataset.displayName || "";
-        const enteredCode = window.prompt(
-            "Enter the product code (one capital letter and one digit):",
-            oldCode
-        );
-        if (enteredCode === null) return;
+        $("editProductOldCode").value = button.dataset.productCode || "";
+        $("editProductCode").value = button.dataset.productCode || "";
+        $("editProductName").value = button.dataset.displayName || "";
+        $("productEditDialog").showModal();
+    });
 
-        const newCode = enteredCode.trim().toUpperCase();
+    $("productEditForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (role !== "owner" || !user) {
+            msg("Only the owner can edit product codes and names.", true);
+            return;
+        }
+
+        const oldCode = $("editProductOldCode").value;
+        const newCode = $("editProductCode").value.trim().toUpperCase();
+        const displayName = $("editProductName").value.trim();
         if (!/^[A-Z][0-9]$/.test(newCode)) {
             msg("Use one capital letter followed by one number, for example A7.", true);
             return;
         }
-
-        const enteredName = window.prompt(
-            "Enter or edit the product name (for example Ring or Jhumka). Leave blank to remove the name:",
-            currentName
-        );
-        if (enteredName === null) return;
-
-        const displayName = enteredName.trim();
         if (displayName.length > 80) {
             msg("Product name must be 80 characters or fewer.", true);
             return;
         }
 
-        button.disabled = true;
+        const saveButton = $("saveProductEdit");
+        saveButton.disabled = true;
         try {
             if (newCode !== oldCode) {
                 await data(db.rpc("fair_sales_rename_price_code", {
@@ -1994,12 +1994,13 @@ if (!fairs.length) {
                 p_product_code: newCode,
                 p_display_name: displayName
             }));
+            $("productEditDialog").close();
             await Promise.all([loadProducts(), loadGlobalInventory()]);
             msg("Product saved: " + newCode + (displayName ? " — " + displayName : "") + ".");
         } catch (error) {
             msg(error.message || "Could not update product code and name.", true);
         } finally {
-            button.disabled = false;
+            saveButton.disabled = false;
         }
     });
 
