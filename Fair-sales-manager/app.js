@@ -7,10 +7,10 @@
 
     // Owner dashboard section navigation: existing cards and workflows stay intact.
     function showOwnerPage(page) {
-        const pages = ["dashboard", "sales-activity", "fair-sales", "products", "employees", "finance", "personal", "settings"];
+        const pages = ["dashboard", "sales-activity", "employee-sales", "fair-sales", "products", "employees", "finance", "personal", "settings"];
         const selected = pages.includes(page) ? page : "dashboard";
         // Only hide/show the owner content panels. Navigation buttons must
-        // remain visible so the owner can switch between all eight sections.
+        // remain visible so the owner can switch between all nine sections.
         document.querySelectorAll("#owner > [data-owner-page]").forEach((element) => {
             element.classList.toggle("hidden", element.dataset.ownerPage !== selected);
         });
