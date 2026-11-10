@@ -1,4 +1,4 @@
-const CACHE = "fair-sales-static-v51";
+const CACHE = "fair-sales-static-v52";
 
 const FILES = [
     "./",
