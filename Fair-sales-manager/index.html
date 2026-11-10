@@ -179,6 +179,7 @@
           <button type="button" class="owner-nav-button" data-owner-page="sales-activity"><strong>Sales Activity</strong><small>Daily report</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="employee-sales"><strong>Employee Sales</strong><small>Employee sales sheet</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="fair-sales"><strong>Fair Sales</strong><small>Fair-wise sales, revenue</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="total-sales"><strong>Total Sales</strong><small>All fair + personal sales</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="products"><strong>Products &amp; Inventory</strong><small>Codes, purchases, stock</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="employees"><strong>Employees</strong><small>Assignments, performance</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="finance"><strong>Expenses &amp; Finance</strong><small>Costs, commission, profit</small></button>
@@ -434,6 +435,13 @@
           <div id="fairSalesBreakdown"><p class="muted">Fair-wise report will load after Owner login.</p></div>
         </div>
 
+        <div class="card" data-owner-page="total-sales">
+          <small class="eyebrow">OWNER ONLY · OVERALL SALES</small>
+          <h2>Total Fair &amp; Personal Sales</h2>
+          <p class="muted">Combined overview of sales from all fairs you own and your personal sales. Personal sales remain separate from employee/fair sales in the detailed reports.</p>
+          <div id="totalSalesOverview"><p class="muted">Overall sales summary will load after Owner login.</p></div>
+        </div>
+
         <div class="card" data-owner-page="personal">
           <small class="eyebrow">OWNER ONLY</small>
           <h2>My personal sales</h2>
@@ -554,7 +562,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=54"></script>
 
 
   <script>
