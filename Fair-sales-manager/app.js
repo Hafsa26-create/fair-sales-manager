@@ -7,7 +7,7 @@
 
     // Owner dashboard section navigation: existing cards and workflows stay intact.
     function showOwnerPage(page) {
-        const pages = ["dashboard", "sales-activity", "employee-sales", "fair-sales", "products", "employees", "finance", "personal", "settings"];
+        const pages = ["dashboard", "sales-activity", "employee-sales", "fair-sales", "total-sales", "products", "employees", "finance", "personal", "settings"];
         const selected = pages.includes(page) ? page : "dashboard";
         // Only hide/show the owner content panels. Navigation buttons must
         // remain visible so the owner can switch between all nine sections.
@@ -627,10 +627,12 @@ if (!fairs.length) {
             await report();
             try {
                 await loadSalesBreakdowns();
+                await loadTotalSalesOverview();
             } catch (breakdownError) {
                 console.error("Fair/personal sales breakdown load failed:", breakdownError);
                 $("fairSalesBreakdown").innerHTML = '<p class="muted">Could not load fair-wise sales. Please use Refresh and try again.</p>';
                 $("personalBreakdownChart").innerHTML = '<p class="muted">Could not load personal sales breakdown. Please use Refresh and try again.</p>';
+                $("totalSalesOverview").innerHTML = '<p class="muted">Could not load the overall sales summary. Please use Refresh and try again.</p>';
             }
             subscribe();
         }
@@ -1069,6 +1071,69 @@ if (!fairs.length) {
                         <td>${row.revenue > 0 ? (profit/row.revenue*100).toFixed(1) : "0.0"}%</td></tr>`;
                 }).join("") : '<tr><td colspan="6">No personal sales recorded yet.</td></tr>'}</tbody>
             </table></div>`;
+    }
+
+    async function loadTotalSalesOverview() {
+        if (role !== "owner" || !user) return;
+
+        const ownerFairs = fairs.filter(item => item.role === "owner");
+        const fairTotals = await Promise.all(ownerFairs.map(async item => {
+            const [entries, fairProducts, costs] = await Promise.all([
+                fetchAllRows(() => db.from("fair_sales_entries")
+                    .select("product_id,quantity,unit_selling_price")
+                    .eq("fair_id", item.id)),
+                data(db.from("fair_sales_products")
+                    .select("id").eq("fair_id", item.id)),
+                data(db.from("fair_sales_product_costs")
+                    .select("product_id,buying_price").eq("fair_id", item.id))
+            ]);
+            const costById = new Map(costs.map(row => [row.product_id, Number(row.buying_price)]));
+            let items = 0, revenue = 0, cost = 0, missing = 0;
+            for (const sale of entries) {
+                const qty = Number(sale.quantity || 0);
+                items += qty;
+                revenue += qty * Number(sale.unit_selling_price || 0);
+                if (costById.has(sale.product_id)) cost += qty * costById.get(sale.product_id);
+                else missing += qty;
+            }
+            return { items, revenue, cost, missing };
+        }));
+
+        const personalEntries = await fetchAllRows(() => db.from("fair_sales_personal_entries")
+            .select("quantity,unit_buying_price,unit_selling_price"));
+        let personalItems = 0, personalRevenue = 0, personalCost = 0;
+        for (const sale of personalEntries) {
+            const qty = Number(sale.quantity || 0);
+            personalItems += qty;
+            personalRevenue += qty * Number(sale.unit_selling_price || 0);
+            personalCost += qty * Number(sale.unit_buying_price || 0);
+        }
+
+        const fairItems = fairTotals.reduce((sum, row) => sum + row.items, 0);
+        const fairRevenue = fairTotals.reduce((sum, row) => sum + row.revenue, 0);
+        const fairCost = fairTotals.reduce((sum, row) => sum + row.cost, 0);
+        const missingFairCostItems = fairTotals.reduce((sum, row) => sum + row.missing, 0);
+        const fairProfit = fairRevenue - fairCost;
+        const personalProfit = personalRevenue - personalCost;
+        const combinedRevenue = fairRevenue + personalRevenue;
+        const combinedItems = fairItems + personalItems;
+        const combinedProfit = missingFairCostItems ? null : fairProfit + personalProfit;
+
+        $("totalSalesOverview").innerHTML = `
+            <div class="report">
+                <div>Total items sold<b>${combinedItems} pcs</b></div>
+                <div>Combined sales revenue<b>${money(combinedRevenue)}</b></div>
+                <div>Fair sales revenue<b>${money(fairRevenue)}</b></div>
+                <div>Personal sales revenue<b>${money(personalRevenue)}</b></div>
+                <div>Fair product cost<b>${missingFairCostItems ? "Incomplete" : money(fairCost)}</b></div>
+                <div>Personal product cost<b>${money(personalCost)}</b></div>
+                <div>Fair gross profit<b>${missingFairCostItems ? "Incomplete" : money(fairProfit)}</b></div>
+                <div>Personal gross profit<b>${money(personalProfit)}</b></div>
+                <div>Combined gross profit<b>${combinedProfit === null ? "Incomplete" : money(combinedProfit)}</b></div>
+            </div>
+            <p class="muted">Includes ${ownerFairs.length} owned fair(s) and all personal sales. Employee commission and fair expenses are not deducted from gross profit.</p>
+            ${missingFairCostItems ? `<p class="muted">Profit is incomplete because buying cost is missing for ${missingFairCostItems} fair-sale item(s).</p>` : ""}
+        `;
     }
 
     async function loadGlobalInventory() {
