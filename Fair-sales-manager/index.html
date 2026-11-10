@@ -176,7 +176,8 @@
       <section id="owner" class="hidden">
         <nav id="ownerNavigation" class="owner-nav" aria-label="Owner dashboard sections">
           <button type="button" class="owner-nav-button active" data-owner-page="dashboard" aria-current="page"><strong>Dashboard</strong><small>Summary</small></button>
-          <button type="button" class="owner-nav-button" data-owner-page="sales-activity"><strong>Sales Activity</strong><small>Daily report, sale entries</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="sales-activity"><strong>Sales Activity</strong><small>Daily report</small></button>
+          <button type="button" class="owner-nav-button" data-owner-page="employee-sales"><strong>Employee Sales</strong><small>Employee sales sheet</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="fair-sales"><strong>Fair Sales</strong><small>Fair-wise sales, revenue</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="products"><strong>Products &amp; Inventory</strong><small>Codes, purchases, stock</small></button>
           <button type="button" class="owner-nav-button" data-owner-page="employees"><strong>Employees</strong><small>Assignments, performance</small></button>
@@ -497,16 +498,16 @@
           <div id="correctionRequests" class="muted">No correction requests loaded.</div>
         </div>
 
-        <div class="card" data-owner-page="sales-activity">
+        <div class="card" data-owner-page="employee-sales">
           <div class="line">
-            <h2>Sales activity</h2>
+            <h2>Employee sales sheet</h2>
             <button type="button" id="refresh" class="quiet">
               Refresh
             </button>
           </div>
-
+          <p class="muted">Sales entered by employees for the selected fair. Personal sales are kept separately.</p>
           <div id="salesList" class="muted">
-            Choose a fair to see sales.
+            Choose a fair to see employee sales.
           </div>
         </div>
 
@@ -552,7 +553,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=50"></script>
+  <script src="app.js?v=51"></script>
 
 
   <script>
