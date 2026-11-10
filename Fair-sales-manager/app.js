@@ -1306,6 +1306,7 @@ if (!fairs.length) {
         }
 
         renderExpenses();
+        await loadDailySalesCommission();
         $("expensePager").innerHTML = totalExpenseCount ? `
             <span>Showing ${expensesFrom + 1}–${Math.min(expensesFrom + ee.length, totalExpenseCount)} of ${totalExpenseCount} expenses</span>
             <div>
@@ -1314,6 +1315,89 @@ if (!fairs.length) {
                 <button type="button" class="quiet" data-expenses-page="1" ${expensesPage + 1 >= totalExpensePages ? "disabled" : ""}>Next</button>
             </div>
         ` : "";
+    }
+
+
+    // Separate owner-only daily sales and 10% commission report.
+    // This is an additional report; it does not change the existing fair report.
+    async function loadDailySalesCommission() {
+        if (role !== "owner" || !fair) return;
+
+        const reportBox = $("dailySalesCommission");
+        if (!reportBox) return;
+
+        const currentFairId = fair.id;
+        reportBox.innerHTML = '<p class="muted">Loading daily sales...</p>';
+
+        try {
+            const entries = await fetchAllRows(() => db
+                .from("fair_sales_entries")
+                .select("created_at,quantity,unit_selling_price")
+                .eq("fair_id", currentFairId)
+                .order("created_at", { ascending: true }));
+
+            if (!fair || fair.id !== currentFairId) return;
+
+            const dateKeyInDhaka = (timestamp) => {
+                const parts = new Intl.DateTimeFormat("en-CA", {
+                    timeZone: "Asia/Dhaka",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit"
+                }).formatToParts(new Date(timestamp));
+                const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+                return `${values.year}-${values.month}-${values.day}`;
+            };
+
+            const daily = new Map();
+            for (const entry of entries) {
+                const date = dateKeyInDhaka(entry.created_at);
+                const row = daily.get(date) || { date, items: 0, sales: 0 };
+                const quantity = Number(entry.quantity || 0);
+                row.items += quantity;
+                row.sales += quantity * Number(entry.unit_selling_price || 0);
+                daily.set(date, row);
+            }
+
+            // Include fair dates with zero sales so every fair day has its own row.
+            const start = new Date(fair.start_date + "T00:00:00Z");
+            const end = new Date(fair.end_date + "T00:00:00Z");
+            for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+                const date = cursor.toISOString().slice(0, 10);
+                if (!daily.has(date)) daily.set(date, { date, items: 0, sales: 0 });
+            }
+
+            const rows = [...daily.values()].sort((a, b) => a.date.localeCompare(b.date));
+            const totalItems = rows.reduce((sum, row) => sum + row.items, 0);
+            const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
+            const totalCommission = totalSales * 0.10;
+            const dateLabel = (value) => new Date(value + "T12:00:00Z")
+                .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Dhaka" });
+
+            reportBox.innerHTML = `
+                <div class="report">
+                    <div>Total items sold<b>${totalItems} pcs</b></div>
+                    <div>Total sales<b>${money(totalSales)}</b></div>
+                    <div>Total commission (10%)<b>${money(totalCommission)}</b></div>
+                </div>
+                <div style="overflow:auto">
+                    <table class="sales-table">
+                        <thead><tr><th>Date</th><th>Total items sold</th><th>Total sales</th><th>Commission (10%)</th></tr></thead>
+                        <tbody>${rows.map(row => `
+                            <tr>
+                                <td>${esc(dateLabel(row.date))}</td>
+                                <td>${row.items} pcs</td>
+                                <td>${money(row.sales)}</td>
+                                <td>${money(row.sales * 0.10)}</td>
+                            </tr>
+                        `).join("")}</tbody>
+                    </table>
+                </div>
+            `;
+        } catch (error) {
+            console.error("Daily sales and commission report failed:", error);
+            reportBox.innerHTML = '<p class="muted">Daily report could not load. Please use Refresh to try again.</p>';
+        }
     }
 
     $("salesList").addEventListener("click", (event) => {
