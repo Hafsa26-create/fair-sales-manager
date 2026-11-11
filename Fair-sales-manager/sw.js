@@ -1,4 +1,4 @@
-const CACHE = "fair-sales-static-v54";
+const CACHE = "fair-sales-static-v55";
 
 const FILES = [
     "./",
@@ -35,7 +35,30 @@ self.addEventListener("fetch", (event) => {
 
     if (request.method !== "GET") return;
 
-    if (url.origin !== self.location.origin) return;
+    // Keep the Supabase browser SDK available after it has been loaded once.
+    // This supports reopening the installed app during a temporary outage.
+    const isSupabaseSdk =
+        (url.hostname === "cdn.jsdelivr.net" || url.hostname === "unpkg.com") &&
+        url.pathname.includes("@supabase/supabase-js");
+
+    if (url.origin !== self.location.origin) {
+        if (!isSupabaseSdk) return;
+
+        event.respondWith((async () => {
+            const cache = await caches.open(CACHE);
+            const cached = await cache.match(request);
+            try {
+                const response = await fetch(request);
+                if (response && (response.ok || response.type === "opaque")) {
+                    await cache.put(request, response.clone());
+                }
+                return response;
+            } catch (error) {
+                return cached || Response.error();
+            }
+        })());
+        return;
+    }
 
     event.respondWith(
         fetch(request).catch(() => caches.match(request).then((cached) => {
