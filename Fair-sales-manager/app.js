@@ -1585,87 +1585,117 @@ if (!fairs.length) {
         });
     }
 
-    // Separate owner-only daily sales and 10% commission report.
-    // This is an additional report; it does not change the existing fair report.
+    // Owner-only daily sales and employee-wise commission report.
+    // Commission remains 10% of each employee's own recorded daily sales.
     async function loadDailySalesCommission() {
         if (role !== "owner" || !fair) return;
-
         const reportBox = $("dailySalesCommission");
         if (!reportBox) return;
-
         const currentFairId = fair.id;
         reportBox.innerHTML = '<p class="muted">Loading daily sales...</p>';
 
         try {
-            const entries = await fetchAllRows(() => db
-                .from("fair_sales_entries")
-                .select("created_at,quantity,unit_selling_price")
-                .eq("fair_id", currentFairId)
-                .order("created_at", { ascending: true }));
-
+            const [entries, members] = await Promise.all([
+                fetchAllRows(() => db.from("fair_sales_entries")
+                    .select("created_at,quantity,unit_selling_price,entered_by")
+                    .eq("fair_id", currentFairId)
+                    .order("created_at", { ascending: true })),
+                data(db.from("fair_sales_memberships")
+                    .select("user_id,created_at")
+                    .eq("fair_id", currentFairId)
+                    .eq("role", "employee")
+                    .order("created_at", { ascending: true }))
+            ]);
             if (!fair || fair.id !== currentFairId) return;
 
-            const dateKeyInDhaka = (timestamp) => {
+            const employees = (members || []).map((member, index) => ({
+                id: member.user_id,
+                label: "Employee " + (index + 1)
+            }));
+            const employeeIds = new Set(employees.map(employee => employee.id));
+
+            const dateKeyInDhaka = timestamp => {
                 const parts = new Intl.DateTimeFormat("en-CA", {
-                    timeZone: "Asia/Dhaka",
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit"
+                    timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit"
                 }).formatToParts(new Date(timestamp));
                 const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-                return `${values.year}-${values.month}-${values.day}`;
+                return values.year + "-" + values.month + "-" + values.day;
             };
 
             const daily = new Map();
             for (const entry of entries) {
                 const date = dateKeyInDhaka(entry.created_at);
-                const row = daily.get(date) || { date, items: 0, sales: 0 };
+                const row = daily.get(date) || { date, items: 0, sales: 0, employeeSales: {} };
                 const quantity = Number(entry.quantity || 0);
+                const saleAmount = quantity * Number(entry.unit_selling_price || 0);
                 row.items += quantity;
-                row.sales += quantity * Number(entry.unit_selling_price || 0);
+                row.sales += saleAmount;
+                if (employeeIds.has(entry.entered_by)) {
+                    row.employeeSales[entry.entered_by] =
+                        (row.employeeSales[entry.entered_by] || 0) + saleAmount;
+                }
                 daily.set(date, row);
             }
 
             // Include fair dates with zero sales so every fair day has its own row.
-            const start = new Date(fair.start_date + "T00:00:00Z");
-            const end = new Date(fair.end_date + "T00:00:00Z");
-            for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+            const startDate = new Date(fair.start_date + "T00:00:00Z");
+            const endDate = new Date(fair.end_date + "T00:00:00Z");
+            for (let cursor = new Date(startDate); cursor <= endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
                 const date = cursor.toISOString().slice(0, 10);
-                if (!daily.has(date)) daily.set(date, { date, items: 0, sales: 0 });
+                if (!daily.has(date)) daily.set(date, { date, items: 0, sales: 0, employeeSales: {} });
             }
 
             const rows = [...daily.values()].sort((a, b) => a.date.localeCompare(b.date));
             const totalItems = rows.reduce((sum, row) => sum + row.items, 0);
             const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
             const totalCommission = totalSales * 0.10;
-            const dateLabel = (value) => new Date(value + "T12:00:00Z")
-                .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Dhaka" });
+            const employeeTotals = {};
+            employees.forEach(employee => {
+                employeeTotals[employee.id] = rows.reduce(
+                    (sum, row) => sum + Number(row.employeeSales[employee.id] || 0), 0
+                );
+            });
+            const dateLabel = value => new Date(value + "T12:00:00Z")
+                .toLocaleDateString("en-GB", {
+                    day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Dhaka"
+                });
 
-            reportBox.innerHTML = `
-                <div class="report">
-                    <div>Total items sold<b>${totalItems} pcs</b></div>
-                    <div>Total sales<b>${money(totalSales)}</b></div>
-                    <div>Total commission (10%)<b>${money(totalCommission)}</b></div>
-                </div>
-                <div style="overflow:auto">
-                    <table class="sales-table">
-                        <thead><tr><th>Date</th><th>Total items sold</th><th>Total sales</th><th>Commission (10%)</th></tr></thead>
-                        <tbody>${rows.map(row => `
-                            <tr>
-                                <td>${esc(dateLabel(row.date))}</td>
-                                <td>${row.items} pcs</td>
-                                <td>${money(row.sales)}</td>
-                                <td>${money(row.sales * 0.10)}</td>
-                            </tr>
-                        `).join("")}</tbody>
-                    </table>
-                </div>
-            `;
+            const employeeHeaders = employees.map(employee =>
+                "<th>" + esc(employee.label) + " sales</th><th>" +
+                esc(employee.label) + " commission (10%)</th>"
+            ).join("");
+            const employeeTotalsHtml = employees.map(employee =>
+                "<div>" + esc(employee.label) + " commission<b>" +
+                money(employeeTotals[employee.id] * 0.10) + "</b></div>"
+            ).join("");
+
+            reportBox.innerHTML =
+                '<div class="report">' +
+                    '<div>Total items sold<b>' + totalItems + ' pcs</b></div>' +
+                    '<div>Total sales<b>' + money(totalSales) + '</b></div>' +
+                    '<div>Total commission (10%)<b>' + money(totalCommission) + '</b></div>' +
+                    employeeTotalsHtml +
+                '</div>' +
+                '<p class="muted">Each employee commission is calculated separately from their own recorded sales for that date.</p>' +
+                '<div style="overflow:auto"><table class="sales-table">' +
+                    '<thead><tr><th>Date</th><th>Total items sold</th><th>Total sales</th>' +
+                    employeeHeaders + '<th>Total commission (10%)</th></tr></thead>' +
+                    '<tbody>' + rows.map(row =>
+                        '<tr><td>' + esc(dateLabel(row.date)) + '</td>' +
+                        '<td>' + row.items + ' pcs</td><td>' + money(row.sales) + '</td>' +
+                        employees.map(employee => {
+                            const employeeSales = Number(row.employeeSales[employee.id] || 0);
+                            return '<td>' + money(employeeSales) + '</td><td>' +
+                                money(employeeSales * 0.10) + '</td>';
+                        }).join("") +
+                        '<td>' + money(row.sales * 0.10) + '</td></tr>'
+                    ).join("") + '</tbody></table></div>';
         } catch (error) {
             console.error("Daily sales and commission report failed:", error);
             reportBox.innerHTML = '<p class="muted">Daily report could not load. Please use Refresh to try again.</p>';
         }
     }
+
 
     $("salesList").addEventListener("click", (event) => {
         const button = event.target.closest("[data-sales-page]");
