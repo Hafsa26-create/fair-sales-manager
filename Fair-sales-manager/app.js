@@ -5,14 +5,18 @@
 
     const $ = (id) => document.getElementById(id);
 
-    // Owner dashboard section navigation: existing cards and workflows stay intact.
+    // Owner navigation works as a menu: selecting a section hides the menu
+    // and every other section. The back button returns to the section menu.
     function showOwnerPage(page) {
         const pages = ["dashboard", "sales-activity", "employee-sales", "fair-sales", "total-sales", "products", "employees", "finance", "personal", "settings"];
-        const selected = pages.includes(page) ? page : "dashboard";
-        // Only hide/show the owner content panels. Navigation buttons must
-        // remain visible so the owner can switch between all nine sections.
+        const selected = pages.includes(page) ? page : null;
+        const backButton = document.getElementById("ownerBackToSections");
+
+        if (ownerNavigation) ownerNavigation.classList.toggle("hidden", Boolean(selected));
+        if (backButton) backButton.classList.toggle("hidden", !selected);
+
         document.querySelectorAll("#owner > [data-owner-page]").forEach((element) => {
-            element.classList.toggle("hidden", element.dataset.ownerPage !== selected);
+            element.classList.toggle("hidden", !selected || element.dataset.ownerPage !== selected);
         });
         document.querySelectorAll("#ownerNavigation [data-owner-page]").forEach((button) => {
             const active = button.dataset.ownerPage === selected;
@@ -24,12 +28,21 @@
 
     const ownerNavigation = document.getElementById("ownerNavigation");
     if (ownerNavigation) {
+        const backButton = document.createElement("button");
+        backButton.type = "button";
+        backButton.id = "ownerBackToSections";
+        backButton.className = "owner-back-button hidden";
+        backButton.textContent = "← Back to Sections";
+        backButton.addEventListener("click", () => showOwnerPage(null));
+        ownerNavigation.insertAdjacentElement("afterend", backButton);
+
         ownerNavigation.addEventListener("click", (event) => {
             const button = event.target.closest("[data-owner-page]");
             if (button) showOwnerPage(button.dataset.ownerPage);
         });
     }
-    showOwnerPage("dashboard");
+    // Start with the navigation menu only; a section opens after it is selected.
+    showOwnerPage(null);
 
     const cfg = window.FAIR_APP_CONFIG;
     let S = window.supabase;
