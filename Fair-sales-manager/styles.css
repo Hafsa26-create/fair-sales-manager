@@ -581,3 +581,19 @@ footer {
 .product-edit-form input { width: 100%; }
 .product-edit-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .product-edit-actions button:disabled { opacity: .55; cursor: wait; }
+
+
+/* Selected owner section: hide the menu and provide a clear way back. */
+.owner-back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 16px;
+    padding: 11px 16px;
+    border: 1px solid #EBD3DC;
+    border-radius: 10px;
+    background: #FFF9F5;
+    color: #512B3A;
+    font-weight: 700;
+}
+.owner-back-button.hidden { display: none !important; }
