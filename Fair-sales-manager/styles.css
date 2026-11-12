@@ -1221,3 +1221,311 @@ footer { color: #8b6b79; }
         font-size: 18px !important;
     }
 }
+
+/* Remaining owner dashboard polish — content, forms, tables and mobile */
+#owner {
+    color: #38232b;
+}
+#owner .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+#owner .stats .stat {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 112px;
+    padding: 18px 18px 17px 20px;
+    border-radius: 16px;
+    background: linear-gradient(150deg, #fff 0%, #fff8fa 100%);
+}
+#owner .stats .stat small {
+    font-size: 14px;
+    line-height: 1.4;
+}
+#owner .stats .stat b {
+    font-size: clamp(20px, 2.2vw, 27px);
+    letter-spacing: -.025em;
+    font-variant-numeric: tabular-nums;
+}
+#owner > [data-owner-page].card {
+    padding: 26px;
+    margin-bottom: 20px;
+    border: 1px solid #ead5dd;
+    border-radius: 18px;
+    background: rgba(255,255,255,.98);
+    box-shadow: 0 7px 24px rgba(80,38,56,.055);
+}
+#owner > [data-owner-page].card > h2,
+#owner > [data-owner-page].card .line h2 {
+    color: #4d2939;
+    font-size: 22px;
+    font-weight: 750;
+}
+#owner > [data-owner-page].card > p.muted {
+    margin-bottom: 18px;
+    color: #75616a;
+    font-size: 14px;
+    line-height: 1.65;
+}
+#owner > [data-owner-page].card > .eyebrow {
+    color: #956278;
+    font-size: 11px;
+    font-weight: 800;
+}
+#owner h3 {
+    margin: 22px 0 10px;
+    color: #60384b;
+    font-size: 15px;
+    font-weight: 750;
+    letter-spacing: .025em;
+}
+#owner label {
+    color: #604653;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+#owner input,
+#owner select,
+#owner textarea {
+    min-height: 48px;
+    padding: 11px 13px;
+    border: 1px solid #e3cbd5;
+    border-radius: 11px;
+    background: #fff;
+    color: #38232b;
+    font-size: 15px;
+}
+#owner input[readonly] {
+    background: #f8f2f5;
+    color: #715b66;
+}
+#owner input::placeholder,
+#owner textarea::placeholder {
+    color: #a18c95;
+}
+#owner button.primary,
+#owner button.secondary,
+#owner button.danger {
+    min-height: 46px;
+    padding: 11px 17px;
+    border-radius: 11px;
+    font-size: 14px;
+    font-weight: 750;
+}
+#owner button.quiet {
+    min-height: 40px;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-weight: 650;
+}
+#owner .report {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+    margin: 14px 0 20px;
+}
+#owner .report > div {
+    min-width: 0;
+    padding: 15px 16px;
+    border: 1px solid #efdee5;
+    border-radius: 13px;
+    background: #fff7fa;
+    color: #705765;
+    font-size: 14px;
+    line-height: 1.5;
+}
+#owner .report > div b {
+    display: block;
+    margin-top: 7px;
+    color: #492b3a;
+    font-size: 19px;
+    font-weight: 750;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+#owner .total {
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border: 1px solid #e8cbd6;
+    border-radius: 13px;
+    background: #f8eaf0;
+    color: #573344;
+}
+#owner .total span {
+    font-size: 14px;
+    font-weight: 700;
+}
+#owner .total b {
+    font-size: clamp(20px, 2.5vw, 25px);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+#owner .fair-investment-total {
+    margin-top: 18px;
+    padding: 19px;
+    border-radius: 14px;
+}
+#owner .product-row,
+#owner .expense-row {
+    gap: 14px;
+    margin-top: 10px;
+    padding: 15px 16px;
+    border: 1px solid #ead5dd;
+    border-radius: 13px;
+    background: #fff8fa;
+    color: #563143;
+    font-size: 14px;
+    line-height: 1.5;
+}
+#owner .expense-row { background: #fff5f6; }
+#owner .expense-details { line-height: 1.55; }
+#owner .expense-actions,
+#owner .inventory-actions {
+    gap: 8px;
+}
+#owner .expense-actions button,
+#owner .inventory-actions button {
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: 13px;
+}
+#owner .employee-sales-tabs {
+    gap: 9px;
+    margin: 16px 0;
+}
+#owner .employee-sheet-tab {
+    min-height: 42px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    border-color: #e5cbd5;
+    background: #fff;
+    color: #603347;
+    font-size: 14px;
+}
+#owner .employee-sheet-tab.active {
+    background: #71394f;
+    border-color: #71394f;
+    color: #fff;
+}
+#owner .sales-table {
+    min-width: 640px;
+    border: 1px solid #ead5dd;
+    border-radius: 13px;
+    font-size: 13px;
+}
+#owner .sales-table th {
+    padding: 13px 14px;
+    background: #f8eaf0;
+    color: #563143;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .025em;
+}
+#owner .sales-table td {
+    padding: 13px 14px;
+    color: #49343e;
+    line-height: 1.45;
+}
+#owner .sales-table tbody tr:nth-child(even) { background: #fff9fb; }
+#owner .sales-table tbody tr:hover { background: #fff0f4; }
+#owner .report-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    color: #735e66;
+    font-size: 13px;
+}
+#owner .report-pager button {
+    min-height: 38px;
+    padding: 8px 13px;
+    border: 1px solid #e4cbd5;
+    border-radius: 9px;
+    background: #fff;
+    color: #71394f;
+    font-weight: 700;
+}
+#owner .product-edit-dialog {
+    max-height: min(88vh, 720px);
+    overflow-y: auto;
+}
+#owner .product-edit-form {
+    gap: 15px;
+}
+#owner .product-edit-form h3 {
+    margin: 0;
+    font-size: 20px;
+}
+#owner .product-edit-actions button {
+    min-height: 42px;
+    padding: 10px 15px;
+}
+#owner #stockSummary,
+#owner #stockAdjustmentHistory,
+#owner #purchaseHistory,
+#owner #productList,
+#owner #expenseList,
+#owner #correctionRequests {
+    margin-top: 12px;
+}
+#owner .muted:empty,
+#owner div:empty {
+    min-height: 0;
+}
+@media (max-width: 700px) {
+    #owner .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+    #owner .stats .stat {
+        min-height: 100px;
+        padding: 14px 13px 13px 16px;
+    }
+    #owner .stats .stat small { font-size: 13px; }
+    #owner .stats .stat b { font-size: 20px; }
+    #owner > [data-owner-page].card {
+        padding: 18px;
+        margin-bottom: 14px;
+        border-radius: 15px;
+    }
+    #owner > [data-owner-page].card > h2,
+    #owner > [data-owner-page].card .line h2 {
+        font-size: 20px;
+    }
+    #owner .report { gap: 8px; }
+    #owner .report > div { padding: 12px; font-size: 13px; }
+    #owner .report > div b { font-size: 17px; }
+    #owner .product-row,
+    #owner .expense-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+    #owner .expense-actions,
+    #owner .inventory-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    #owner .expense-actions button,
+    #owner .inventory-actions button { flex: 1 1 auto; }
+    #owner .sales-table { min-width: 600px; }
+}
+@media (max-width: 420px) {
+    #owner > [data-owner-page].card { padding: 15px; }
+    #owner .report { grid-template-columns: 1fr 1fr; }
+    #owner .report > div { padding: 10px; }
+    #owner .report > div b { font-size: 16px; }
+    #owner form.grid { grid-template-columns: 1fr; }
+    #owner form.grid > .span { grid-column: 1; }
+    #owner .total { align-items: flex-start; flex-direction: column; }
+    #owner .employee-sheet-tab { flex: 1 1 100%; }
+}
