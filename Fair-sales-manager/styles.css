@@ -820,3 +820,35 @@ footer { color: #8b6b79; }
         animation-iteration-count: 1 !important;
     }
 }
+
+
+/* Stock adjustment history actions */
+.stock-adjustment-row { align-items: center; }
+.inventory-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    flex-shrink: 0;
+}
+.inventory-actions button {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 12px;
+}
+.inventory-edit {
+    border: 1px solid #D8A7B8;
+    border-radius: 8px;
+    background: #fff;
+    color: #71394f;
+    font-weight: 700;
+}
+.inventory-delete {
+    padding: 7px 10px;
+}
+@media (max-width: 480px) {
+    .stock-adjustment-row { align-items: flex-start; }
+    .inventory-actions { flex-direction: column; }
+    .inventory-actions button { width: 100%; }
+}
