@@ -912,6 +912,7 @@ if (!fairs.length) {
                                 <button type="button" class="quiet product-name-edit" data-product-code="${esc(p.product_code)}" data-display-name="${esc(p.display_name || "")}">Edit name</button>
                                 <button type="button" class="quiet product-code-edit" data-product-code="${esc(p.product_code)}" data-display-name="${esc(p.display_name || "")}">Edit code / name</button>
                                 <button type="button" class="quiet product-default-price-edit" data-product-code="${esc(p.product_code)}" data-default-price="${p.default_selling_price ?? ""}">Edit default price</button>
+                                <button type="button" class="quiet product-buying-price-edit" data-product-code="${esc(p.product_code)}" data-buying-price="${globalCatalog.find(item => item.product_code === p.product_code)?.buying_price ?? ""}">Edit buying price</button>
                             </span>
                         </div>
                     `
@@ -2404,6 +2405,41 @@ if (!fairs.length) {
                 msg(error.message || "Could not update default selling price.", true);
             } finally {
                 priceButton.disabled = false;
+            }
+            return;
+        }
+
+        const buyingPriceButton = event.target.closest(".product-buying-price-edit");
+        if (buyingPriceButton) {
+            if (role !== "owner" || !user) {
+                msg("Only the owner can edit global buying prices.", true);
+                return;
+            }
+            const code = buyingPriceButton.dataset.productCode;
+            const currentPrice = buyingPriceButton.dataset.buyingPrice;
+            const entered = window.prompt(
+                "Enter the new GLOBAL buying price for " + code + " (zero or more). This applies to future purchases and new fairs only; existing fair costs and reports stay unchanged:",
+                currentPrice
+            );
+            if (entered === null) return;
+            const normalized = entered.trim();
+            const newPrice = Number(normalized);
+            if (normalized === "" || !Number.isFinite(newPrice) || newPrice < 0) {
+                msg("Enter a valid buying price of zero or more.", true);
+                return;
+            }
+            buyingPriceButton.disabled = true;
+            try {
+                await data(db.rpc("fair_sales_update_buying_price", {
+                    p_product_code: code,
+                    p_buying_price: newPrice
+                }));
+                await Promise.all([loadProducts(), loadGlobalInventory()]);
+                msg("Global buying price updated for " + code + ". Existing fair costs and reports were not changed.");
+            } catch (error) {
+                msg(error.message || "Could not update global buying price.", true);
+            } finally {
+                buyingPriceButton.disabled = false;
             }
             return;
         }
