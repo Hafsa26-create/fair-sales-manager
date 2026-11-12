@@ -1110,3 +1110,10 @@ footer { color: #8b6b79; }
     #owner > [data-owner-page].card { padding: 14px; }
     #owner .stats .stat b { font-size: 17px; }
 }
+
+/* Owner navigation readability: keep all navigation text at 16px,
+   including the compact mobile layout. */
+#owner .owner-nav-button strong,
+#owner .owner-nav-button small {
+    font-size: 16px;
+}
