@@ -228,23 +228,27 @@
     const removePendingSale = (id) =>
         offlineRequest("pendingSales", "readwrite", store => store.delete(id));
 
-    // After a successful online fair/membership refresh, discard this user's
-    // queued sales only when their fair no longer exists in their assignments.
-    // This cleans up local test data for deleted fairs without touching sales
-    // belonging to any currently assigned fair.
+    // Identify queued sales for fairs that are no longer assigned to this
+    // account. Never delete these automatically: the queue may contain genuine
+    // sales entered offline before an employee was removed from a fair.
+    async function countPendingSalesForUnassignedFairs(validFairIds) {
+        if (!user) return 0;
+        const validIds = new Set(validFairIds);
+        const pending = await getPendingSales();
+        return pending.filter(item =>
+            item.entered_by === user.id && !validIds.has(item.fair_id)
+        ).length;
+    }
+
+    // Destructive cleanup is available only after the user explicitly confirms.
     async function removePendingSalesForDeletedFairs(validFairIds) {
         if (!user || !navigator.onLine) return 0;
-
         const validIds = new Set(validFairIds);
         const pending = await getPendingSales();
         const stale = pending.filter(item =>
             item.entered_by === user.id && !validIds.has(item.fair_id)
         );
-
-        for (const sale of stale) {
-            await removePendingSale(sale.id);
-        }
-
+        for (const sale of stale) await removePendingSale(sale.id);
         return stale.length;
     }
 
@@ -284,7 +288,10 @@
         lastSyncError = "";
         try {
             const pending = await getPendingSales();
-            const mine = pending.filter(item => item.entered_by === user.id);
+            const assignedFairIds = new Set(fairs.map(item => item.id));
+            const mine = pending.filter(item =>
+                item.entered_by === user.id && assignedFairIds.has(item.fair_id)
+            );
             let syncedCount = 0;
             const failedSales = [];
 
@@ -432,9 +439,9 @@
                 ...f,
                 role: roles.get(f.id)
             }));
-            // Only purge stale local queue items after a successful online
-            // refresh from the server, never from an offline cached snapshot.
-            lastCleanedPendingCount = await removePendingSalesForDeletedFairs(fairs.map(item => item.id));
+            // Keep queued sales from removed/deleted fairs for review. Never purge
+            // potentially genuine offline sales during an ordinary login/refresh.
+            lastCleanedPendingCount = await countPendingSalesForUnassignedFairs(fairs.map(item => item.id));
             const previous = await getSnapshot(user.id);
             const selectedFairId = fairs.some(item => item.id === previous?.selectedFairId)
                 ? previous.selectedFairId
@@ -2065,19 +2072,33 @@ if (!fairs.length) {
             cleanupPendingButton.disabled = true;
             cleanupPendingButton.textContent = "Checking fairs...";
             try {
-                // Refresh authoritative online fair assignments, then remove
-                // only queued sales whose fair is no longer assigned to user.
+                // Refresh authoritative assignments and show the number of queued
+                // sales that no longer belong to an assigned fair.
                 await loadFairs();
-                const removed = lastCleanedPendingCount;
+                const staleCount = lastCleanedPendingCount;
+                let removed = 0;
+                if (staleCount) {
+                    const confirmed = window.confirm(
+                        staleCount + " pending sale(s) belong to a fair that is no longer assigned to this account. " +
+                        "These sales may not have synced before access changed. Delete them permanently from this phone?"
+                    );
+                    if (confirmed) {
+                        removed = await removePendingSalesForDeletedFairs(fairs.map(item => item.id));
+                    }
+                }
                 await updatePendingStatus();
                 if ($("entryStatus")) {
                     $("entryStatus").textContent = removed
-                        ? removed + " pending sale(s) from deleted/unassigned fairs removed. Current-fair sales were kept."
-                        : "No pending sales from deleted/unassigned fairs found. Current-fair sales were kept.";
+                        ? removed + " old pending sale(s) deleted after your confirmation. Current-fair sales were kept."
+                        : staleCount
+                            ? "Old-fair pending sales were kept on this phone. Restore fair access or review them before deleting."
+                            : "No pending sales from deleted/unassigned fairs found.";
                 }
                 msg(removed
-                    ? removed + " old pending sale(s) cleaned up."
-                    : "No deleted-fair pending sales to clean.");
+                    ? removed + " old pending sale(s) deleted."
+                    : staleCount
+                        ? "Pending sales were kept; nothing was deleted."
+                        : "No deleted-fair pending sales to clean.");
                 await syncPendingSales();
             } catch (error) {
                 console.error("Pending sale cleanup failed:", error);
