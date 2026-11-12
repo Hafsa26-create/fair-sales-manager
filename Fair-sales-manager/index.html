@@ -478,6 +478,27 @@
             <label>Reason<input id="adjustReason" required placeholder="Damaged / lost / correction"></label>
             <button class="secondary span">Save stock adjustment</button>
           </form>
+          <h3>Stock adjustment history</h3>
+          <p class="muted">These corrections change available stock only. They never increase purchased quantity or purchase spend.</p>
+          <div id="stockAdjustmentHistory"></div>
+          <dialog id="stockAdjustmentEditDialog" class="product-edit-dialog">
+            <form id="stockAdjustmentEditForm" class="product-edit-form">
+              <h3>Edit stock adjustment</h3>
+              <label>Quantity change (pcs)
+                <input id="editAdjustmentDelta" type="number" step="1" required>
+              </label>
+              <label>Date
+                <input id="editAdjustmentDate" type="date" required>
+              </label>
+              <label>Reason
+                <input id="editAdjustmentReason" required maxlength="200">
+              </label>
+              <div class="product-edit-actions">
+                <button type="button" class="quiet" id="cancelStockAdjustmentEdit">Cancel</button>
+                <button type="submit" class="primary" id="saveStockAdjustmentEdit">Save changes</button>
+              </div>
+            </form>
+          </dialog>
         </div>
 
         <div class="card" data-owner-page="employees">
@@ -562,7 +583,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js?v=34"></script>
-  <script src="app.js?v=56"></script>
+  <script src="app.js?v=57"></script>
 
 
   <script>
