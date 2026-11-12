@@ -984,7 +984,7 @@ if (!fairs.length) {
         $("inventoryList").innerHTML = rows.length ? `
             <div style="overflow:auto">
                 <table class="sales-table">
-                    <thead><tr><th>Code</th><th>Buy price</th><th>Purchased</th><th>Adjustment</th><th>Available</th><th>Stock value</th></tr></thead>
+                    <thead><tr><th>Code</th><th>Buy price</th><th>Purchased</th><th>Adjustment</th><th>Available</th><th>Stock value</th><th>Action</th></tr></thead>
                     <tbody>${rows.map(row => `<tr>
                         <td><b>${esc(row.product_code)}</b></td>
                         <td>${money(row.buying_price)}</td>
@@ -992,6 +992,7 @@ if (!fairs.length) {
                         <td>${row.adjusted_quantity}</td>
                         <td><b>${row.available_quantity}</b></td>
                         <td>${money(row.stock_value)}</td>
+                        <td><button type="button" class="quiet product-buying-price-edit" data-product-code="${esc(row.product_code)}" data-buying-price="${row.buying_price ?? ""}">Edit buying price</button></td>
                     </tr>`).join("")}</tbody>
                 </table>
             </div>
@@ -2455,6 +2456,45 @@ if (!fairs.length) {
         $("editProductCode").value = button.dataset.productCode || "";
         $("editProductName").value = button.dataset.displayName || "";
         $("productEditDialog").showModal();
+    });
+
+    // The global inventory table is the primary place to edit a code's buying price.
+    // Keep this delegated handler separate because the table is rendered dynamically.
+    $("inventoryList").addEventListener("click", async (event) => {
+        const button = event.target.closest(".product-buying-price-edit");
+        if (!button) return;
+        if (role !== "owner" || !user) {
+            msg("Only the owner can edit global buying prices.", true);
+            return;
+        }
+
+        const code = button.dataset.productCode;
+        const currentPrice = button.dataset.buyingPrice;
+        const entered = window.prompt(
+            "Enter the new GLOBAL buying price for " + code + ". This applies to future purchases and new fairs only; existing fair costs and reports stay unchanged:",
+            currentPrice
+        );
+        if (entered === null) return;
+        const normalized = entered.trim();
+        const newPrice = Number(normalized);
+        if (normalized === "" || !Number.isFinite(newPrice) || newPrice < 0) {
+            msg("Enter a valid buying price of zero or more.", true);
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            await data(db.rpc("fair_sales_update_buying_price", {
+                p_product_code: code,
+                p_buying_price: newPrice
+            }));
+            await Promise.all([loadProducts(), loadGlobalInventory()]);
+            msg("Global buying price updated for " + code + ". Existing fair costs and reports were not changed.");
+        } catch (error) {
+            msg(error.message || "Could not update global buying price.", true);
+        } finally {
+            button.disabled = false;
+        }
     });
 
     $("productEditForm").addEventListener("submit", async (event) => {
