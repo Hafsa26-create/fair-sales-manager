@@ -1529,3 +1529,125 @@ footer { color: #8b6b79; }
     #owner .total { align-items: flex-start; flex-direction: column; }
     #owner .employee-sheet-tab { flex: 1 1 100%; }
 }
+
+
+/* Owner UI polish pass — final responsive overrides */
+#owner .owner-nav-button,
+#owner .owner-nav-button strong,
+#owner .owner-nav-button small {
+    font-size: 18px !important;
+}
+#owner .owner-nav-button {
+    min-height: 88px;
+    justify-content: center;
+    gap: 5px;
+    padding: 14px 16px;
+    line-height: 1.35;
+}
+#owner .owner-nav-button small {
+    line-height: 1.35;
+    font-weight: 500;
+}
+#owner .owner-nav-button.active small { color: #f8e8ee; }
+#owner > [data-owner-page].card {
+    scroll-margin-top: 88px;
+}
+#owner .card,
+#owner > [data-owner-page].card {
+    border: 1px solid #ead5dd;
+    box-shadow: 0 8px 24px rgba(80, 38, 56, .055);
+}
+#owner .stats .stat {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+#owner .stats .stat small {
+    font-size: 14px;
+    line-height: 1.4;
+}
+#owner .stats .stat b {
+    font-size: clamp(18px, 2.1vw, 23px);
+    line-height: 1.25;
+}
+#owner input,
+#owner select,
+#owner textarea {
+    min-height: 48px;
+    font-size: 16px;
+}
+#owner button.primary,
+#owner button.secondary,
+#owner button.danger,
+#owner button.quiet,
+#owner .employee-sheet-tab,
+#owner .report-pager button {
+    min-height: 44px;
+    font-size: 15px;
+}
+#owner .sales-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+#owner .sales-table td,
+#owner .sales-table th {
+    vertical-align: middle;
+}
+#owner .product-row,
+#owner .expense-row {
+    overflow-wrap: anywhere;
+}
+#owner .expense-actions button,
+#owner .inventory-actions button {
+    min-height: 40px;
+    font-size: 14px;
+}
+#owner .report > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+#owner .report > div b,
+#owner .total b,
+#owner .fair-investment-total b,
+#owner .stats .stat b {
+    font-variant-numeric: tabular-nums;
+}
+#owner .owner-back-button {
+    min-height: 44px;
+    font-size: 15px;
+}
+@media (max-width: 700px) {
+    #owner .owner-nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px;
+    }
+    #owner .owner-nav-button {
+        min-height: 88px;
+        padding: 12px 10px;
+    }
+    #owner .owner-nav-button,
+    #owner .owner-nav-button strong,
+    #owner .owner-nav-button small {
+        font-size: 18px !important;
+    }
+    #owner .stats .stat {
+        min-height: 96px;
+    }
+    #owner .sales-table {
+        min-width: 620px;
+    }
+}
+@media (max-width: 380px) {
+    #owner .owner-nav {
+        grid-template-columns: 1fr;
+    }
+    #owner .owner-nav-button {
+        min-height: 72px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    #owner .owner-nav-button { transition: none; }
+}
