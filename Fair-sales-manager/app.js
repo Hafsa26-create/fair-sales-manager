@@ -966,17 +966,17 @@ if (!fairs.length) {
         `;
 
 
-        $("stockAdjustmentHistory").innerHTML = stockAdjustmentRows.length ? stockAdjustmentRows.map(row => \`
+        $("stockAdjustmentHistory").innerHTML = stockAdjustmentRows.length ? stockAdjustmentRows.map(row => `
             <div class="product-row stock-adjustment-row">
                 <span>
-                    <b>\${esc(row.product_code)} · \${Number(row.quantity_delta) > 0 ? "+" : ""}\${Number(row.quantity_delta)} pcs</b><br>
-                    <small>\${esc(day(row.adjustment_date))} · \${esc(row.reason)}</small>
+                    <b>${esc(row.product_code)} · ${Number(row.quantity_delta) > 0 ? "+" : ""}${Number(row.quantity_delta)} pcs</b><br>
+                    <small>${esc(day(row.adjustment_date))} · ${esc(row.reason)}</small>
                 </span>
                 <span class="inventory-actions">
-                    <button type="button" class="quiet inventory-edit" data-stock-adjustment-action="edit" data-id="\${esc(row.id)}">Edit</button>
-                    <button type="button" class="danger inventory-delete" data-stock-adjustment-action="delete" data-id="\${esc(row.id)}">Delete</button>
+                    <button type="button" class="quiet inventory-edit" data-stock-adjustment-action="edit" data-id="${esc(row.id)}">Edit</button>
+                    <button type="button" class="danger inventory-delete" data-stock-adjustment-action="delete" data-id="${esc(row.id)}">Delete</button>
                 </span>
-            </div>\`).join("") : '<p class="muted">No stock adjustments recorded yet.</p>';
+            </div>`).join("") : '<p class="muted">No stock adjustments recorded yet.</p>';
 
         $("purchaseHistory").innerHTML = purchaseHistoryRows.length ? purchaseHistoryRows.map(row => `
             <div class="product-row">
