@@ -1663,7 +1663,7 @@ if (!fairs.length) {
         try {
             const [entries, costs, fairFinance] = await Promise.all([
                 fetchAllRows(() => db.from("fair_sales_entries")
-                    .select("*")
+                    .select("id,fair_id,product_id,quantity,unit_selling_price,created_at,entered_by")
                     .eq("fair_id", currentFairId)
                     .eq("entered_by", employeeId)
                     .order("created_at", { ascending: false })),
@@ -1701,7 +1701,7 @@ if (!fairs.length) {
                 ${entries.length ? `
                     <div style="overflow:auto">
                         <table class="sales-table">
-                            <thead><tr><th>Time</th><th>Product</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Commission (${commissionLabel})</th><th>Cost</th><th>Gross profit</th></tr></thead>
+                            <thead><tr><th>Time</th><th>Product Code</th><th>Product Name</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Commission (${commissionLabel})</th><th>Cost</th><th>Gross profit</th></tr></thead>
                             <tbody>${entries.map(item => {
                                 const product = productMap.get(item.product_id);
                                 const sale = Number(item.quantity) * Number(item.unit_selling_price);
@@ -1709,7 +1709,8 @@ if (!fairs.length) {
                                 const rowCost = unitCost === undefined ? null : Number(item.quantity) * unitCost;
                                 return `<tr>
                                     <td>${esc(new Date(item.created_at).toLocaleString())}</td>
-                                    <td>${esc(product?.product_code || "Product")}</td>
+                                    <td><span class="product-code-pill">${esc(product?.product_code || "Unknown code")}</span></td>
+                                    <td>${esc(product?.display_name || "—")}</td>
                                     <td>${item.quantity}</td>
                                     <td>${money(item.unit_selling_price)}</td>
                                     <td>${money(sale)}</td>
