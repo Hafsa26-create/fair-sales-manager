@@ -421,12 +421,12 @@
 
     async function loadFairs() {
         try {
-            const remoteFairs = await data(
-                db.from("fair_sales_fairs").select("*").order("created_at", { ascending: false })
-            );
-            const ms = await data(
-                db.from("fair_sales_memberships").select("fair_id,role").eq("user_id", user.id)
-            );
+            // Fair records and the current user's memberships are independent;
+            // fetch them together instead of waiting for two network round trips.
+            const [remoteFairs, ms] = await Promise.all([
+                data(db.from("fair_sales_fairs").select("*").order("created_at", { ascending: false })),
+                data(db.from("fair_sales_memberships").select("fair_id,role").eq("user_id", user.id))
+            ]);
             const roles = new Map(ms.map((m) => [m.fair_id, m.role]));
             fairs = remoteFairs.filter((f) => roles.has(f.id)).map((f) => ({
                 ...f,
