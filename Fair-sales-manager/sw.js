@@ -33,7 +33,12 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
-        await Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)));
+        // This origin may host other apps. Remove only older caches owned by
+        // Fair Sales Manager; never clear unrelated applications' caches.
+        await Promise.all(
+            keys.filter(key => key.startsWith("fair-sales-static-") && key !== CACHE)
+                .map(key => caches.delete(key))
+        );
         await self.clients.claim();
     })());
 });
