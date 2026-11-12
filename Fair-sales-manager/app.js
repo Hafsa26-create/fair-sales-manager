@@ -1463,8 +1463,9 @@ if (!fairs.length) {
         ) / 86400000) + 1);
         const other = Number(finance.other_expenses || 0) + Number(totals.expense_total || 0);
         const lunch = days * Number(finance.lunch_per_day || 0);
-        const profit = revenue - cogs - commission -
-            Number(finance.stall_rent || 0) - lunch - other;
+        const stallRent = Number(finance.stall_rent || 0);
+        const fairInvestment = cogs + commission + stallRent + lunch + other;
+        const profit = revenue - fairInvestment;
 
         $("salesTotal").textContent = money(revenue);
         $("profitTotal").textContent = money(profit);
@@ -1473,7 +1474,9 @@ if (!fairs.length) {
         $("costTotal").textContent = money(cogs);
         $("rentTotal").textContent = money(finance.stall_rent);
         $("lunchTotal").textContent = money(lunch);
+        $("fairReportCommission").textContent = money(commission);
         $("expenseTotal").textContent = money(other);
+        $("fairInvestmentTotal").textContent = money(fairInvestment);
 
         const missingCosts = Number(totals.missing_cost_count || 0);
         $("salesList").innerHTML = ss.length ? `
