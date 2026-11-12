@@ -1494,25 +1494,30 @@ if (!fairs.length) {
         // Combine the fair's preset other-expense amount with all recorded
         // expense entries. Normalize RPC output so missing/null values display 0,
         // never an empty report line.
-        const reportExpenseTotal = Number(totals?.expense_total ?? 0);
-        const presetOtherExpenses = Number(finance?.other_expenses ?? 0);
-        const otherAdditional = (
-            Number.isFinite(reportExpenseTotal) ? reportExpenseTotal : 0
-        ) + (
-            Number.isFinite(presetOtherExpenses) ? presetOtherExpenses : 0
-        );
-        const lunch = days * Number(finance.lunch_per_day || 0);
-        const stallRent = Number(finance.stall_rent || 0);
-        const totalExpense = otherAdditional + lunch + commission;
-        const investmentSubtotal = cogs + stallRent;
+        // Normalize every financial input before arithmetic. A missing or
+        // malformed value must show as ৳0, never as a blank/NaN report value.
+        const amount = (value) => {
+            const parsed = Number(value ?? 0);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+        const reportExpenseTotal = amount(totals?.expense_total);
+        const presetOtherExpenses = amount(finance?.other_expenses);
+        const otherAdditional = reportExpenseTotal + presetOtherExpenses;
+        const lunch = days * amount(finance?.lunch_per_day);
+        const stallRent = amount(finance?.stall_rent);
+        const safeCommission = amount(commission);
+        const safeCogs = amount(cogs);
+        const safeRevenue = amount(revenue);
+        const totalExpense = otherAdditional + lunch + safeCommission;
+        const investmentSubtotal = safeCogs + stallRent;
         const fairInvestment = totalExpense + investmentSubtotal;
-        const profit = revenue - fairInvestment;
+        const profit = safeRevenue - fairInvestment;
 
-        $("salesTotal").textContent = money(revenue);
+        $("salesTotal").textContent = money(safeRevenue);
         $("profitTotal").textContent = money(profit);
         $("itemsTotal").textContent = items;
-        $("commissionTotal").textContent = money(commission);
-        $("costTotal").textContent = money(cogs);
+        $("commissionTotal").textContent = money(safeCommission);
+        $("costTotal").textContent = money(safeCogs);
         $("rentTotal").textContent = money(stallRent);
         $("lunchTotal").textContent = money(lunch);
         $("fairReportCommission").textContent = money(commission);
