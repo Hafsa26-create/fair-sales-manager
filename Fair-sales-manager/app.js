@@ -2419,7 +2419,7 @@ if (!fairs.length) {
             const code = buyingPriceButton.dataset.productCode;
             const currentPrice = buyingPriceButton.dataset.buyingPrice;
             const entered = window.prompt(
-                "Enter the new GLOBAL buying price for " + code + " (zero or more). This applies to future purchases and new fairs only; existing fair costs and reports stay unchanged:",
+                "Enter the new GLOBAL buying price for " + code + " (zero or more). This updates the buying price for this product code across ALL your fairs, including existing fair costs and reports:",
                 currentPrice
             );
             if (entered === null) return;
@@ -2435,8 +2435,8 @@ if (!fairs.length) {
                     p_product_code: code,
                     p_buying_price: newPrice
                 }));
-                await Promise.all([loadProducts(), loadGlobalInventory()]);
-                msg("Global buying price updated for " + code + ". Existing fair costs and reports were not changed.");
+                await Promise.all([loadProducts(), loadGlobalInventory(), report({ includeDetails: true })]);
+                msg("Global buying price updated for " + code + " across all fairs and reports.");
             } catch (error) {
                 msg(error.message || "Could not update global buying price.", true);
             } finally {
@@ -2471,7 +2471,7 @@ if (!fairs.length) {
         const code = button.dataset.productCode;
         const currentPrice = button.dataset.buyingPrice;
         const entered = window.prompt(
-            "Enter the new GLOBAL buying price for " + code + ". This applies to future purchases and new fairs only; existing fair costs and reports stay unchanged:",
+            "Enter the new GLOBAL buying price for " + code + ". This updates the buying price for this product code across ALL your fairs, including existing fair costs and reports:",
             currentPrice
         );
         if (entered === null) return;
@@ -2488,8 +2488,8 @@ if (!fairs.length) {
                 p_product_code: code,
                 p_buying_price: newPrice
             }));
-            await Promise.all([loadProducts(), loadGlobalInventory()]);
-            msg("Global buying price updated for " + code + ". Existing fair costs and reports were not changed.");
+            await Promise.all([loadProducts(), loadGlobalInventory(), report({ includeDetails: true })]);
+            msg("Global buying price updated for " + code + " across all fairs and reports.");
         } catch (error) {
             msg(error.message || "Could not update global buying price.", true);
         } finally {
