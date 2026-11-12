@@ -879,3 +879,234 @@ footer { color: #8b6b79; }
     color: #805B6A;
     font-size: 11px;
 }
+
+/* ========================================
+   Owner dashboard — focused UI polish
+   Scoped to #owner; no employee or data logic changes.
+   ======================================== */
+#owner {
+    --owner-accent: #71394f;
+    --owner-accent-dark: #55283c;
+    --owner-border: #ead5dd;
+    --owner-muted: #796570;
+}
+#owner .owner-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 11px;
+    padding: 14px;
+    margin-bottom: 24px;
+    border-radius: 18px;
+    background: rgba(255, 247, 250, .96);
+    border-color: #ead3dd;
+    box-shadow: 0 10px 28px rgba(80, 38, 56, .075);
+}
+#owner .owner-nav-button {
+    min-height: 76px;
+    justify-content: center;
+    padding: 13px 15px;
+    border-radius: 13px;
+    border-color: #ead8df;
+    box-shadow: 0 2px 7px rgba(80, 38, 56, .025);
+}
+#owner .owner-nav-button strong {
+    font-size: 15px;
+    line-height: 1.35;
+    letter-spacing: -.01em;
+}
+#owner .owner-nav-button small {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--owner-muted);
+}
+#owner .owner-nav-button:hover {
+    transform: translateY(-1px);
+    border-color: #c895a9;
+    box-shadow: 0 5px 14px rgba(80, 38, 56, .07);
+}
+#owner .owner-nav-button.active {
+    background: linear-gradient(145deg, #7b4058, #5d2e43);
+    border-color: #65334a;
+    box-shadow: 0 5px 14px rgba(93, 46, 67, .18);
+}
+#owner .owner-nav-button.active small { color: #f9e9ef; }
+#owner .owner-back-button {
+    margin-bottom: 18px;
+    padding: 10px 15px;
+    border-radius: 11px;
+    box-shadow: 0 2px 8px rgba(80, 38, 56, .04);
+}
+#owner > [data-owner-page].card {
+    padding: 25px;
+    margin-bottom: 18px;
+    border-radius: 18px;
+    border-color: var(--owner-border);
+    box-shadow: 0 8px 25px rgba(80, 38, 56, .055);
+}
+#owner > [data-owner-page].card > h2,
+#owner > [data-owner-page].card .line h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 21px;
+    line-height: 1.3;
+    letter-spacing: -.025em;
+}
+#owner > [data-owner-page].card > .eyebrow {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-size: 11px;
+    letter-spacing: .11em;
+}
+#owner > [data-owner-page].card > p.muted {
+    max-width: 760px;
+    margin-top: 6px;
+    line-height: 1.65;
+}
+#owner .stats {
+    gap: 13px;
+    margin: 0 0 18px;
+}
+#owner .stats .stat {
+    position: relative;
+    min-width: 0;
+    padding: 18px;
+    overflow: hidden;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #ecd9e1;
+    box-shadow: 0 5px 17px rgba(80, 38, 56, .045);
+}
+#owner .stats .stat::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: #b77b94;
+}
+#owner .stats .stat:nth-child(2)::before { background: #4c9273; }
+#owner .stats .stat:nth-child(3)::before { background: #9b83bd; }
+#owner .stats .stat:nth-child(4)::before { background: #d29a55; }
+#owner .stats .stat small {
+    display: block;
+    color: #796570;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .015em;
+}
+#owner .stats .stat b {
+    margin-top: 9px;
+    color: #472b39;
+    font-size: clamp(19px, 2.2vw, 25px);
+    line-height: 1.2;
+}
+#owner [data-owner-page="dashboard"] .report {
+    gap: 10px;
+    margin: 12px 0 18px;
+}
+#owner [data-owner-page="dashboard"] .report > div {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #f0dfe6;
+    border-radius: 12px;
+    background: #fff8fa;
+    color: #705765;
+    font-size: 12px;
+    line-height: 1.45;
+}
+#owner [data-owner-page="dashboard"] .report b {
+    margin-top: 8px;
+    color: #492b3a;
+    font-size: 18px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+#owner [data-owner-page="dashboard"] h3 {
+    margin: 20px 0 8px;
+    color: #60384b;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+#owner [data-owner-page="dashboard"] .fair-investment-total {
+    padding: 18px;
+    border-color: #e5c5d1;
+    background: linear-gradient(135deg, #fff3f7, #f9e8ef);
+}
+#owner [data-owner-page="dashboard"] .fair-investment-total b {
+    font-size: clamp(25px, 3vw, 30px);
+}
+#owner form.grid { column-gap: 16px; row-gap: 2px; }
+#owner label {
+    gap: 7px;
+    margin-bottom: 15px;
+    color: #604653;
+    font-size: 13px;
+    font-weight: 650;
+}
+#owner input,
+#owner select {
+    min-height: 46px;
+    border-radius: 11px;
+    border-color: #e4cfd8;
+    background: #fff;
+    font-size: 14px;
+}
+#owner button.primary,
+#owner button.secondary {
+    min-height: 45px;
+    border-radius: 11px;
+    padding: 11px 17px;
+    font-size: 13px;
+}
+#owner .sales-table {
+    min-width: 620px;
+    border-radius: 13px;
+    font-size: 13px;
+}
+#owner .sales-table th {
+    padding: 12px 13px;
+    font-size: 11px;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+}
+#owner .sales-table td { padding: 12px 13px; }
+#owner .report-pager { padding-top: 10px; }
+#owner .employee-sales-tabs { gap: 9px; }
+#owner .employee-sheet-tab {
+    border-radius: 11px;
+    padding: 10px 14px;
+    font-size: 13px;
+}
+#owner .product-row,
+#owner .expense-row { padding: 13px 14px; }
+@media (max-width: 700px) {
+    #owner .owner-nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px;
+        margin-bottom: 17px;
+    }
+    #owner .owner-nav-button {
+        min-height: 68px;
+        padding: 10px 11px;
+    }
+    #owner .owner-nav-button strong { font-size: 13px; }
+    #owner .owner-nav-button small { font-size: 11px; }
+    #owner > [data-owner-page].card {
+        padding: 17px;
+        border-radius: 15px;
+    }
+    #owner .stats { gap: 8px; }
+    #owner .stats .stat { padding: 14px 12px 14px 15px; }
+    #owner .stats .stat b { font-size: 19px; }
+    #owner [data-owner-page="dashboard"] .report { gap: 8px; }
+    #owner [data-owner-page="dashboard"] .report > div { padding: 11px; }
+    #owner [data-owner-page="dashboard"] .report b { font-size: 16px; }
+}
+@media (max-width: 380px) {
+    #owner .owner-nav-button { min-height: 64px; padding: 9px; }
+    #owner .owner-nav-button strong { font-size: 12px; }
+    #owner .owner-nav-button small { font-size: 10px; }
+    #owner > [data-owner-page].card { padding: 14px; }
+    #owner .stats .stat b { font-size: 17px; }
+}
