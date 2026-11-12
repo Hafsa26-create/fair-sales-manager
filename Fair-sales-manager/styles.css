@@ -1194,3 +1194,30 @@ footer { color: #8b6b79; }
         scroll-behavior: auto !important;
     }
 }
+
+
+/* FINAL OWNER NAV FONT OVERRIDE — must remain last in stylesheet */
+#owner #ownerNavigation .owner-nav-button strong,
+#owner #ownerNavigation .owner-nav-button small {
+    font-size: 18px !important;
+    line-height: 1.35 !important;
+}
+#owner #ownerNavigation .owner-nav-button {
+    min-height: 92px !important;
+    padding: 15px 16px !important;
+}
+@media (max-width: 700px) {
+    #owner #ownerNavigation .owner-nav-button strong,
+    #owner #ownerNavigation .owner-nav-button small {
+        font-size: 18px !important;
+    }
+    #owner #ownerNavigation .owner-nav-button {
+        min-height: 88px !important;
+    }
+}
+@media (max-width: 380px) {
+    #owner #ownerNavigation .owner-nav-button strong,
+    #owner #ownerNavigation .owner-nav-button small {
+        font-size: 18px !important;
+    }
+}
