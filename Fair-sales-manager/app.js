@@ -1491,10 +1491,12 @@ if (!fairs.length) {
             new Date(fair.end_date + "T00:00:00") -
             new Date(fair.start_date + "T00:00:00")
         ) / 86400000) + 1);
-        const other = Number(finance.other_expenses || 0) + Number(totals.expense_total || 0);
+        const otherAdditional = Number(finance.other_expenses || 0) + Number(totals.expense_total || 0);
         const lunch = days * Number(finance.lunch_per_day || 0);
         const stallRent = Number(finance.stall_rent || 0);
-        const fairInvestment = cogs + commission + stallRent + lunch + other;
+        const totalExpense = otherAdditional + lunch + commission;
+        const investmentSubtotal = cogs + stallRent;
+        const fairInvestment = totalExpense + investmentSubtotal;
         const profit = revenue - fairInvestment;
 
         $("salesTotal").textContent = money(revenue);
@@ -1502,10 +1504,12 @@ if (!fairs.length) {
         $("itemsTotal").textContent = items;
         $("commissionTotal").textContent = money(commission);
         $("costTotal").textContent = money(cogs);
-        $("rentTotal").textContent = money(finance.stall_rent);
+        $("rentTotal").textContent = money(stallRent);
         $("lunchTotal").textContent = money(lunch);
         $("fairReportCommission").textContent = money(commission);
-        $("expenseTotal").textContent = money(other);
+        $("otherAdditionalTotal").textContent = money(otherAdditional);
+        $("expenseTotal").textContent = money(totalExpense);
+        $("investmentSubtotal").textContent = money(investmentSubtotal);
         $("fairInvestmentTotal").textContent = money(fairInvestment);
 
         const missingCosts = Number(totals.missing_cost_count || 0);
