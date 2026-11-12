@@ -1663,7 +1663,7 @@ if (!fairs.length) {
 
         sheet.innerHTML = '<p class="muted">Loading this employee\'s sales...</p>';
         try {
-            const [entries, costs, fairFinance] = await Promise.all([
+            const [entries, costs, sheetProducts, fairFinance] = await Promise.all([
                 fetchAllRows(() => db.from("fair_sales_entries")
                     .select("id,fair_id,product_id,quantity,unit_selling_price,created_at,entered_by")
                     .eq("fair_id", currentFairId)
@@ -1671,6 +1671,9 @@ if (!fairs.length) {
                     .order("created_at", { ascending: false })),
                 data(db.from("fair_sales_product_costs")
                     .select("product_id,buying_price")
+                    .eq("fair_id", currentFairId)),
+                data(db.from("fair_sales_products")
+                    .select("id,fair_id,product_code,display_name,active")
                     .eq("fair_id", currentFairId)),
                 data(db.from("fair_sales_financials")
                     .select("commission_rate")
@@ -1681,7 +1684,10 @@ if (!fairs.length) {
             if (!fair || fair.id !== currentFairId || selectedEmployeeSheetId !== employeeId) return;
 
             const costMap = new Map((costs || []).map(item => [item.product_id, Number(item.buying_price)]));
-            const productMap = new Map(products.map(item => [item.id, item]));
+            // Load the selected fair's product catalog alongside the sales. Do not
+            // depend on the global in-memory products array: owners can open this
+            // sheet before visiting the Products section, or after switching fairs.
+            const productMap = new Map((sheetProducts || []).map(item => [item.id, item]));
             const totalItems = entries.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
             const totalSales = entries.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_selling_price || 0), 0);
             const totalCost = entries.reduce((sum, item) => {
