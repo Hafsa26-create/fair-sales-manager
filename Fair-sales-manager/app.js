@@ -1902,7 +1902,11 @@ if (!fairs.length) {
     // 7. REAL-TIME SALES SYNC
     // ========================================
 
+    let realtimeRefreshTimer = null;
+    let realtimeRefreshRunning = false;
+
     function subscribe() {
+        if (!fair) return;
         channel = db
             .channel("fair-sales-" + fair.id)
             .on(
@@ -1913,12 +1917,21 @@ if (!fairs.length) {
                     table: "fair_sales_entries",
                     filter: "fair_id=eq." + fair.id
                 },
-                () => safe(async () => {
-                    const pages = [...new Set([...ownerSectionLoadPromises.keys()]
-                        .filter(key => key.startsWith(fair.id + ":"))
-                        .map(key => key.slice(fair.id.length + 1)))];
-                    await Promise.all(pages.map(page => loadOwnerSection(page, true)));
-                })
+                () => {
+                    // A burst of employee sales can generate many realtime events.
+                    // Debounce them and refresh only the section currently on screen.
+                    if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer);
+                    realtimeRefreshTimer = setTimeout(() => {
+                        realtimeRefreshTimer = null;
+                        if (realtimeRefreshRunning || !fair || role !== "owner" || !activeOwnerPage) return;
+                        realtimeRefreshRunning = true;
+                        safe(async () => {
+                            await loadOwnerSection(activeOwnerPage, true);
+                        }).finally(() => {
+                            realtimeRefreshRunning = false;
+                        });
+                    }, 450);
+                }
             )
             .subscribe((status) => {
                 $("sync").textContent =
