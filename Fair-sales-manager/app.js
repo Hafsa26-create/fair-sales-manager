@@ -71,6 +71,8 @@
     let globalCatalog = [];
     let globalInventory = [];
     let globalPurchaseTotal = 0;
+    let stockAdjustmentRows = [];
+    let editingStockAdjustmentId = null;
     let salesPage = 0;
     let expensesPage = 0;
     let selectedEmployeeSheetId = null;
@@ -963,6 +965,19 @@ if (!fairs.length) {
             </div>
         `;
 
+
+        $("stockAdjustmentHistory").innerHTML = stockAdjustmentRows.length ? stockAdjustmentRows.map(row => \`
+            <div class="product-row stock-adjustment-row">
+                <span>
+                    <b>\${esc(row.product_code)} · \${Number(row.quantity_delta) > 0 ? "+" : ""}\${Number(row.quantity_delta)} pcs</b><br>
+                    <small>\${esc(day(row.adjustment_date))} · \${esc(row.reason)}</small>
+                </span>
+                <span class="inventory-actions">
+                    <button type="button" class="quiet inventory-edit" data-stock-adjustment-action="edit" data-id="\${esc(row.id)}">Edit</button>
+                    <button type="button" class="danger inventory-delete" data-stock-adjustment-action="delete" data-id="\${esc(row.id)}">Delete</button>
+                </span>
+            </div>\`).join("") : '<p class="muted">No stock adjustments recorded yet.</p>';
+
         $("purchaseHistory").innerHTML = purchaseHistoryRows.length ? purchaseHistoryRows.map(row => `
             <div class="product-row">
                 <span><b>${esc(row.product_code)}</b><br><small>${esc(day(row.purchase_date))} · ${row.quantity} pcs × ${money(row.unit_buying_price)}</small>${row.note ? `<br><small>${esc(row.note)}</small>` : ""}</span>
@@ -1177,7 +1192,11 @@ if (!fairs.length) {
             data(db.from("fair_sales_personal_entries")
                 .select("id,product_code,quantity,unit_buying_price,unit_selling_price,sale_date,note")
                 .order("sale_date", { ascending: false }).limit(50)),
-            data(db.rpc("fair_sales_get_global_purchase_total"))
+            data(db.rpc("fair_sales_get_global_purchase_total")),
+            data(db.from("fair_sales_stock_adjustments")
+                .select("id,product_code,quantity_delta,adjustment_date,reason")
+                .order("adjustment_date", { ascending: false })
+                .order("created_at", { ascending: false }).limit(100))
         ]);
 
         const today = new Date().toISOString().slice(0, 10);
@@ -1193,6 +1212,8 @@ if (!fairs.length) {
         else console.error("Personal sales history could not load:", results[2].reason);
         if (results[3].status === "fulfilled") globalPurchaseTotal = Number(results[3].value || 0);
         else console.error("Purchase total could not load:", results[3].reason);
+        if (results[4].status === "fulfilled") stockAdjustmentRows = results[4].value || [];
+        else console.error("Stock adjustment history could not load:", results[4].reason);
 
         renderGlobalInventory();
         updatePurchasePreview();
@@ -1272,6 +1293,81 @@ if (!fairs.length) {
             if (button) button.disabled = false;
         }
     };
+
+
+    function closeStockAdjustmentDialog() {
+        const dialog = $("stockAdjustmentEditDialog");
+        if (dialog?.open) dialog.close();
+        editingStockAdjustmentId = null;
+    }
+
+    $("cancelStockAdjustmentEdit").addEventListener("click", closeStockAdjustmentDialog);
+
+    $("stockAdjustmentEditForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (role !== "owner" || !user || !editingStockAdjustmentId) return;
+        const row = stockAdjustmentRows.find(item => item.id === editingStockAdjustmentId);
+        if (!row) return msg("This stock adjustment could not be found. Refresh inventory.", true);
+
+        const delta = Number($("editAdjustmentDelta").value);
+        const reason = $("editAdjustmentReason").value.trim();
+        const date = $("editAdjustmentDate").value;
+        if (!Number.isInteger(delta) || delta === 0 || !reason || !date) {
+            return msg("Enter a non-zero whole-number quantity, date and reason.", true);
+        }
+
+        const currentAvailable = Number(globalInventory.find(item => item.product_code === row.product_code)?.available_quantity || 0);
+        const nextAvailable = currentAvailable - Number(row.quantity_delta) + delta;
+        if (nextAvailable < 0) return msg("This change would make available stock negative.", true);
+
+        const button = $("saveStockAdjustmentEdit");
+        button.disabled = true;
+        try {
+            await data(db.from("fair_sales_stock_adjustments")
+                .update({ quantity_delta: delta, adjustment_date: date, reason })
+                .eq("id", editingStockAdjustmentId)
+                .eq("created_by", user.id));
+            closeStockAdjustmentDialog();
+            await loadGlobalInventory();
+            msg("Stock adjustment updated. Available stock recalculated.");
+        } catch (error) {
+            msg(error.message || "Could not update stock adjustment.", true);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    $("stockAdjustmentHistory").addEventListener("click", async (e) => {
+        const button = e.target.closest("[data-stock-adjustment-action]");
+        if (!button || role !== "owner" || !user) return;
+        const row = stockAdjustmentRows.find(item => item.id === button.dataset.id);
+        if (!row) return msg("Stock adjustment not found. Refresh inventory.", true);
+
+        if (button.dataset.stockAdjustmentAction === "edit") {
+            editingStockAdjustmentId = row.id;
+            $("editAdjustmentDelta").value = row.quantity_delta;
+            $("editAdjustmentDate").value = day(row.adjustment_date);
+            $("editAdjustmentReason").value = row.reason;
+            $("stockAdjustmentEditDialog").showModal();
+            return;
+        }
+
+        if (button.dataset.stockAdjustmentAction === "delete") {
+            if (!window.confirm("Delete this stock adjustment permanently? Available stock will be recalculated. This will not change purchase records.")) return;
+            button.disabled = true;
+            try {
+                await data(db.from("fair_sales_stock_adjustments")
+                    .delete()
+                    .eq("id", row.id)
+                    .eq("created_by", user.id));
+                await loadGlobalInventory();
+                msg("Stock adjustment deleted. Available stock recalculated.");
+            } catch (error) {
+                msg(error.message || "Could not delete stock adjustment.", true);
+                button.disabled = false;
+            }
+        }
+    });
 
     $("adjustform").onsubmit = async (e) => {
         e.preventDefault();
