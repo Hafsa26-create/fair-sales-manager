@@ -6,10 +6,14 @@
     const $ = (id) => document.getElementById(id);
 
     // Owner navigation works as a menu: selecting a section hides the menu
-    // and every other section. The back button returns to the section menu.
+    // and every other section. Each section loads its data only when first opened.
+    let activeOwnerPage = null;
+    const ownerSectionLoadPromises = new Map();
+
     function showOwnerPage(page) {
         const pages = ["dashboard", "sales-activity", "employee-sales", "fair-sales", "total-sales", "products", "employees", "finance", "personal", "settings"];
         const selected = pages.includes(page) ? page : null;
+        activeOwnerPage = selected;
         const backButton = document.getElementById("ownerBackToSections");
 
         if (ownerNavigation) ownerNavigation.classList.toggle("hidden", Boolean(selected));
@@ -38,7 +42,10 @@
 
         ownerNavigation.addEventListener("click", (event) => {
             const button = event.target.closest("[data-owner-page]");
-            if (button) showOwnerPage(button.dataset.ownerPage);
+            if (!button) return;
+            const page = button.dataset.ownerPage;
+            showOwnerPage(page);
+            if (role === "owner") safe(() => loadOwnerSection(page));
         });
     }
     // Start with the navigation menu only; a section opens after it is selected.
@@ -544,7 +551,7 @@ if (!fairs.length) {
                 .order("product_code")
         );
 
-        for (const item of catalog) {
+        await Promise.all(catalog.map(async (item) => {
             const productId = await data(
                 db.rpc("fair_sales_add_price_code", {
                     p_fair_id: fairId,
@@ -563,7 +570,7 @@ if (!fairs.length) {
                     .eq("id", productId)
                     .eq("fair_id", fairId)
             );
-        }
+        }));
     }
 
     // Keep every fair owned by this account aligned with the global code catalog.
@@ -575,6 +582,57 @@ if (!fairs.length) {
             await syncGlobalPriceCodesToFair(item.id);
         }
     }
+
+    async function loadOwnerSection(page, force = false) {
+        if (role !== "owner" || !fair || !page) return;
+        const currentFairId = fair.id;
+        const key = currentFairId + ":" + page;
+        if (!force && ownerSectionLoadPromises.has(key)) {
+            return ownerSectionLoadPromises.get(key);
+        }
+
+        const task = (async () => {
+            switch (page) {
+                case "dashboard":
+                case "finance":
+                    await report();
+                    break;
+                case "sales-activity":
+                    await loadDailySalesCommission();
+                    break;
+                case "employee-sales":
+                    await loadEmployeeSalesSheets(currentFairId);
+                    break;
+                case "fair-sales":
+                    await loadSalesBreakdowns(currentFairId);
+                    break;
+                case "total-sales":
+                    await loadTotalSalesOverview();
+                    break;
+                case "products":
+                    await Promise.all([loadGlobalInventory(), loadProducts()]);
+                    break;
+                case "employees":
+                    await loadCorrectionRequests();
+                    break;
+                case "personal":
+                    await loadSalesBreakdowns(currentFairId);
+                    break;
+                case "settings":
+                    break;
+            }
+            if (!fair || fair.id !== currentFairId) return;
+        })();
+
+        ownerSectionLoadPromises.set(key, task);
+        try {
+            await task;
+        } catch (error) {
+            ownerSectionLoadPromises.delete(key);
+            throw error;
+        }
+    }
+
 
     async function chooseFair(id) {
         if (channel) {
@@ -589,6 +647,7 @@ if (!fairs.length) {
         expensesPage = 0;
         selectedEmployeeSheetId = null;
         products = [];
+        ownerSectionLoadPromises.clear();
 
         if (fair && user) {
             const snapshot = await getSnapshot(user.id) || {
@@ -607,52 +666,23 @@ if (!fairs.length) {
             return;
         }
 
-        if (role === "owner") {
-            // Inventory errors must not prevent the fair report from rendering.
-            try {
-                await loadGlobalInventory();
-            } catch (inventoryError) {
-                console.error("Global inventory load failed:", inventoryError);
-                msg("Global stock could not refresh. Fair reports will still load.", true);
-            }
-
-            finance = await data(
-                db
-                    .from("fair_sales_financials")
-                    .select("*")
-                    .eq("fair_id", fair.id)
-                    .single()
-            );
-
-            await syncGlobalPriceCodesToFair(fair.id);
-        }
-
-        await loadProducts();
-
         if (role === "employee") {
-            await refreshEmployeeItemsSold();
-            try { await loadMyRecentSales(); }
-            catch (error) {
-                console.warn("Could not load employee recent sales:", error);
-                $("myRecentSales").textContent = "Could not load recent sales. Tap Refresh to try again.";
-            }
+            await loadProducts();
+            await Promise.all([
+                refreshEmployeeItemsSold(),
+                loadMyRecentSales().catch(error => {
+                    console.warn("Could not load employee recent sales:", error);
+                    $("myRecentSales").textContent = "Could not load recent sales. Tap Refresh to try again.";
+                })
+            ]);
         }
 
         if (role === "owner") {
-            await report();
-            try {
-                await loadSalesBreakdowns();
-                await loadTotalSalesOverview();
-            } catch (breakdownError) {
-                console.error("Fair/personal sales breakdown load failed:", breakdownError);
-                $("fairSalesBreakdown").innerHTML = '<p class="muted">Could not load fair-wise sales. Please use Refresh and try again.</p>';
-                $("personalBreakdownChart").innerHTML = '<p class="muted">Could not load personal sales breakdown. Please use Refresh and try again.</p>';
-                $("totalSalesOverview").innerHTML = '<p class="muted">Could not load the overall sales summary. Please use Refresh and try again.</p>';
-            }
+            // Do not load every report and inventory table during login.
+            // Each owner section fetches only its own data when opened.
             subscribe();
         }
     }
-
 
     // ========================================
     // 5. PRODUCTS & BUYING PRICES
@@ -1516,14 +1546,7 @@ if (!fairs.length) {
             ${missingCosts ? `<p class="muted">${missingCosts} sale(s) have no recorded buying cost; profit may be overstated.</p>` : ""}
         ` : '<p class="muted">No sales recorded yet.</p>';
 
-        try { await loadCorrectionRequests(); }
-        catch (error) {
-            console.warn("Could not load correction requests:", error);
-            if ($("correctionRequests")) $("correctionRequests").textContent = "Could not load requests. Use Refresh to try again.";
-        }
-
         renderExpenses();
-        await loadDailySalesCommission();
         $("expensePager").innerHTML = totalExpenseCount ? `
             <span>Showing ${expensesFrom + 1}–${Math.min(expensesFrom + ee.length, totalExpenseCount)} of ${totalExpenseCount} expenses</span>
             <div>
@@ -1532,7 +1555,6 @@ if (!fairs.length) {
                 <button type="button" class="quiet" data-expenses-page="1" ${expensesPage + 1 >= totalExpensePages ? "disabled" : ""}>Next</button>
             </div>
         ` : "";
-        await loadEmployeeSalesSheets(currentFairId);
     }
 
 
@@ -1892,7 +1914,10 @@ if (!fairs.length) {
                     filter: "fair_id=eq." + fair.id
                 },
                 () => safe(async () => {
-                    await Promise.all([report(), loadGlobalInventory()]);
+                    const pages = [...new Set([...ownerSectionLoadPromises.keys()]
+                        .filter(key => key.startsWith(fair.id + ":"))
+                        .map(key => key.slice(fair.id.length + 1)))];
+                    await Promise.all(pages.map(page => loadOwnerSection(page, true)));
                 })
             )
             .subscribe((status) => {
@@ -2233,7 +2258,7 @@ if (!fairs.length) {
             await loadFairs();
 
             $("fairSelect").value = f.id;
-
+            await syncGlobalPriceCodesToFair(f.id);
             await chooseFair(f.id);
 
             msg("Fair created. Now add product categories.");
@@ -2590,10 +2615,10 @@ if (!fairs.length) {
     // ========================================
 
     $("refresh").onclick = () => safe(async () => {
-        await report();
         if (role === "owner") {
-            await loadGlobalInventory();
-            await loadSalesBreakdowns();
+            if (activeOwnerPage) await loadOwnerSection(activeOwnerPage, true);
+        } else if (role === "employee") {
+            await Promise.all([refreshEmployeeItemsSold(), loadMyRecentSales()]);
         }
     });
 
