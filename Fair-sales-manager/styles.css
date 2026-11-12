@@ -1651,3 +1651,154 @@ footer { color: #8b6b79; }
 @media (prefers-reduced-motion: reduce) {
     #owner .owner-nav-button { transition: none; }
 }
+
+
+/* Employee workspace polish — quick, readable and thumb-friendly on phones. */
+#employee {
+    display: grid;
+    gap: 16px;
+}
+#employee .stats {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+}
+#employee .stats .stat {
+    min-height: 88px;
+    padding: 18px 20px;
+    border: 1px solid #ead5dd;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #fff 0%, #fff7fa 100%);
+}
+#employee .stats .stat small {
+    color: #795d69;
+    font-size: 14px;
+    font-weight: 650;
+}
+#employee .stats .stat b {
+    color: #4d2939;
+    font-size: clamp(25px, 4vw, 32px);
+    font-variant-numeric: tabular-nums;
+}
+#employee #saleform,
+#employee > .card {
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid #ead5dd;
+    border-radius: 17px;
+    box-shadow: 0 7px 22px rgba(80, 38, 56, .05);
+}
+#employee #saleform h2,
+#employee > .card h2 {
+    margin: 5px 0 17px;
+    color: #4d2939;
+    font-size: 21px;
+    font-weight: 750;
+}
+#employee label {
+    display: grid;
+    gap: 8px;
+    color: #604653;
+    font-size: 14px;
+    font-weight: 700;
+}
+#employee input,
+#employee select {
+    width: 100%;
+    min-width: 0;
+    min-height: 50px;
+    padding: 12px 13px;
+    border: 1px solid #e3cbd5;
+    border-radius: 11px;
+    background: #fff;
+    color: #38232b;
+    font-size: 16px;
+}
+#employee input[readonly] {
+    background: #f8f2f5;
+    color: #715b66;
+}
+#employee input:focus-visible,
+#employee select:focus-visible,
+#employee button:focus-visible {
+    outline: 3px solid rgba(150, 83, 112, .35);
+    outline-offset: 2px;
+}
+#employee #saleform .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 13px;
+    margin-top: 14px;
+}
+#employee #saleform .grid label:first-child {
+    grid-column: 1 / -1;
+}
+#employee .total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 18px 0;
+    padding: 16px 18px;
+    border: 1px solid #e8cbd6;
+    border-radius: 13px;
+    background: #f8eaf0;
+    color: #573344;
+}
+#employee .total span {
+    font-size: 14px;
+    font-weight: 700;
+}
+#employee .total b {
+    font-size: clamp(22px, 4vw, 28px);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+#employee button.primary,
+#employee button.secondary,
+#employee button.quiet {
+    min-height: 48px;
+    padding: 12px 17px;
+    border-radius: 11px;
+    font-size: 15px;
+    font-weight: 750;
+}
+#employee #saleform button.primary {
+    width: 100%;
+    min-height: 54px;
+    font-size: 16px;
+}
+#employee #entryStatus {
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+#employee #myRecentSales .expense-row {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+#employee #myRecentSales .expense-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+#employee #myRecentSales .expense-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+@media (max-width: 520px) {
+    #employee { gap: 12px; }
+    #employee #saleform,
+    #employee > .card { padding: 17px; }
+    #employee #saleform .grid { grid-template-columns: 1fr; }
+    #employee #saleform .grid label:first-child { grid-column: auto; }
+    #employee #saleform h2,
+    #employee > .card h2 { font-size: 19px; }
+    #employee #myRecentSales .expense-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    #employee #myRecentSales .expense-actions { width: 100%; }
+    #employee #myRecentSales .expense-actions button { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #employee button { transition: none !important; }
+}
