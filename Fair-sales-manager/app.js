@@ -1476,11 +1476,11 @@ if (!fairs.length) {
         const totalSalesPages = Math.max(1, Math.ceil(totalSalesCount / REPORT_PAGE_SIZE));
         const totalExpensePages = Math.max(1, Math.ceil(totalExpenseCount / REPORT_PAGE_SIZE));
 
-        if (salesPage >= totalSalesPages && salesPage > 0) {
+        if (includeDetails && salesPage >= totalSalesPages && salesPage > 0) {
             salesPage = totalSalesPages - 1;
             return report();
         }
-        if (expensesPage >= totalExpensePages && expensesPage > 0) {
+        if (includeDetails && expensesPage >= totalExpensePages && expensesPage > 0) {
             expensesPage = totalExpensePages - 1;
             return report();
         }
