@@ -594,6 +594,10 @@ if (!fairs.length) {
         const task = (async () => {
             switch (page) {
                 case "dashboard":
+                    // The dashboard needs summary totals only. Keep paginated
+                    // sales/expense history queries for the Finance section.
+                    await report({ includeDetails: false });
+                    break;
                 case "finance":
                     await report();
                     break;
@@ -1436,7 +1440,7 @@ if (!fairs.length) {
     // 6. OWNER REPORT & PROFIT CALCULATION
     // ========================================
 
-    async function report() {
+    async function report({ includeDetails = true } = {}) {
         if (role !== "owner" || !fair) return;
 
         const currentFairId = fair.id;
@@ -1445,15 +1449,21 @@ if (!fairs.length) {
 
         const [totals, ssResult, cc, eeResult, ff] = await Promise.all([
             data(db.rpc("fair_sales_get_report_totals", { p_fair_id: currentFairId })),
-            db.from("fair_sales_entries").select("*", { count: "exact" })
-                .eq("fair_id", currentFairId)
-                .order("created_at", { ascending: false })
-                .range(salesFrom, salesFrom + REPORT_PAGE_SIZE - 1),
-            data(db.from("fair_sales_product_costs").select("product_id,buying_price").eq("fair_id", currentFairId)),
-            db.from("fair_sales_expenses").select("*", { count: "exact" })
-                .eq("fair_id", currentFairId)
-                .order("expense_date", { ascending: false })
-                .range(expensesFrom, expensesFrom + REPORT_PAGE_SIZE - 1),
+            includeDetails
+                ? db.from("fair_sales_entries").select("*", { count: "exact" })
+                    .eq("fair_id", currentFairId)
+                    .order("created_at", { ascending: false })
+                    .range(salesFrom, salesFrom + REPORT_PAGE_SIZE - 1)
+                : Promise.resolve({ data: [], count: 0, error: null }),
+            includeDetails
+                ? data(db.from("fair_sales_product_costs").select("product_id,buying_price").eq("fair_id", currentFairId))
+                : Promise.resolve([]),
+            includeDetails
+                ? db.from("fair_sales_expenses").select("*", { count: "exact" })
+                    .eq("fair_id", currentFairId)
+                    .order("expense_date", { ascending: false })
+                    .range(expensesFrom, expensesFrom + REPORT_PAGE_SIZE - 1)
+                : Promise.resolve({ data: [], count: 0, error: null }),
             data(db.from("fair_sales_financials").select("*").eq("fair_id", currentFairId).single())
         ]);
 
