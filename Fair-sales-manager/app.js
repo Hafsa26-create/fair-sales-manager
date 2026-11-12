@@ -1654,7 +1654,7 @@ if (!fairs.length) {
 
         sheet.innerHTML = '<p class="muted">Loading this employee\'s sales...</p>';
         try {
-            const [entries, costs] = await Promise.all([
+            const [entries, costs, fairFinance] = await Promise.all([
                 fetchAllRows(() => db.from("fair_sales_entries")
                     .select("*")
                     .eq("fair_id", currentFairId)
@@ -1662,7 +1662,11 @@ if (!fairs.length) {
                     .order("created_at", { ascending: false })),
                 data(db.from("fair_sales_product_costs")
                     .select("product_id,buying_price")
-                    .eq("fair_id", currentFairId))
+                    .eq("fair_id", currentFairId)),
+                data(db.from("fair_sales_financials")
+                    .select("commission_rate")
+                    .eq("fair_id", currentFairId)
+                    .single())
             ]);
 
             if (!fair || fair.id !== currentFairId || selectedEmployeeSheetId !== employeeId) return;
@@ -1676,20 +1680,21 @@ if (!fairs.length) {
                 return sum + (unitCost === undefined ? 0 : Number(item.quantity || 0) * unitCost);
             }, 0);
             const missingCosts = entries.filter(item => !costMap.has(item.product_id)).length;
-            const commissionRate = 0.10;
+            const commissionRate = Number(fairFinance?.commission_rate ?? 0.10);
+            const commissionLabel = Number((commissionRate * 100).toFixed(2)) + "%";
             const totalCommission = totalSales * commissionRate;
 
             sheet.innerHTML = `
                 <div class="report employee-sheet-summary">
                     <div>Total items<b>${totalItems}</b></div>
                     <div>Total sales<b>${money(totalSales)}</b></div>
-                    <div>Commission (10%)<b>${money(totalCommission)}</b></div>
+                    <div>Commission (${commissionLabel})<b>${money(totalCommission)}</b></div>
                     <div>Gross profit<b>${money(totalSales - totalCost)}</b></div>
                 </div>
                 ${entries.length ? `
                     <div style="overflow:auto">
                         <table class="sales-table">
-                            <thead><tr><th>Time</th><th>Product</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Commission (10%)</th><th>Cost</th><th>Gross profit</th></tr></thead>
+                            <thead><tr><th>Time</th><th>Product</th><th>Qty</th><th>Price / pc</th><th>Sales</th><th>Commission (${commissionLabel})</th><th>Cost</th><th>Gross profit</th></tr></thead>
                             <tbody>${entries.map(item => {
                                 const product = productMap.get(item.product_id);
                                 const sale = Number(item.quantity) * Number(item.unit_selling_price);
@@ -1744,7 +1749,7 @@ if (!fairs.length) {
         reportBox.innerHTML = '<p class="muted">Loading daily sales...</p>';
 
         try {
-            const [entries, members] = await Promise.all([
+            const [entries, members, fairFinance] = await Promise.all([
                 fetchAllRows(() => db.from("fair_sales_entries")
                     .select("created_at,quantity,unit_selling_price,entered_by")
                     .eq("fair_id", currentFairId)
@@ -1753,7 +1758,11 @@ if (!fairs.length) {
                     .select("user_id,created_at")
                     .eq("fair_id", currentFairId)
                     .eq("role", "employee")
-                    .order("created_at", { ascending: true }))
+                    .order("created_at", { ascending: true })),
+                data(db.from("fair_sales_financials")
+                    .select("commission_rate")
+                    .eq("fair_id", currentFairId)
+                    .single())
             ]);
             if (!fair || fair.id !== currentFairId) return;
 
@@ -1797,7 +1806,9 @@ if (!fairs.length) {
             const rows = [...daily.values()].sort((a, b) => a.date.localeCompare(b.date));
             const totalItems = rows.reduce((sum, row) => sum + row.items, 0);
             const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
-            const totalCommission = totalSales * 0.10;
+            const commissionRate = Number(fairFinance?.commission_rate ?? 0.10);
+            const commissionLabel = Number((commissionRate * 100).toFixed(2)) + "%";
+            const totalCommission = totalSales * commissionRate;
             const employeeTotals = {};
             employees.forEach(employee => {
                 employeeTotals[employee.id] = rows.reduce(
@@ -1811,11 +1822,11 @@ if (!fairs.length) {
 
             const employeeHeaders = employees.map(employee =>
                 "<th>" + esc(employee.label) + " sales</th><th>" +
-                esc(employee.label) + " commission (10%)</th>"
+                esc(employee.label) + " commission (" + commissionLabel + ")</th>"
             ).join("");
             const employeeTotalsHtml = employees.map(employee =>
                 "<div>" + esc(employee.label) + " commission<b>" +
-                money(employeeTotals[employee.id] * 0.10) + "</b></div>"
+                money(employeeTotals[employee.id] * commissionRate) + "</b></div>"
             ).join("");
 
             reportBox.innerHTML =
@@ -1828,16 +1839,16 @@ if (!fairs.length) {
                 '<p class="muted">Each employee commission is calculated separately from their own recorded sales for that date.</p>' +
                 '<div style="overflow:auto"><table class="sales-table">' +
                     '<thead><tr><th>Date</th><th>Total items sold</th><th>Total sales</th>' +
-                    employeeHeaders + '<th>Total commission (10%)</th></tr></thead>' +
+                    employeeHeaders + '<th>Total commission (' + commissionLabel + ')</th></tr></thead>' +
                     '<tbody>' + rows.map(row =>
                         '<tr><td>' + esc(dateLabel(row.date)) + '</td>' +
                         '<td>' + row.items + ' pcs</td><td>' + money(row.sales) + '</td>' +
                         employees.map(employee => {
                             const employeeSales = Number(row.employeeSales[employee.id] || 0);
                             return '<td>' + money(employeeSales) + '</td><td>' +
-                                money(employeeSales * 0.10) + '</td>';
+                                money(employeeSales * commissionRate) + '</td>';
                         }).join("") +
-                        '<td>' + money(row.sales * 0.10) + '</td></tr>'
+                        '<td>' + money(row.sales * commissionRate) + '</td></tr>'
                     ).join("") + '</tbody></table></div>';
         } catch (error) {
             console.error("Daily sales and commission report failed:", error);
