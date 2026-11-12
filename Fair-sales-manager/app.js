@@ -1833,7 +1833,7 @@ if (!fairs.length) {
                 '<div class="report">' +
                     '<div>Total items sold<b>' + totalItems + ' pcs</b></div>' +
                     '<div>Total sales<b>' + money(totalSales) + '</b></div>' +
-                    '<div>Total commission (10%)<b>' + money(totalCommission) + '</b></div>' +
+                    '<div>Total commission (' + commissionLabel + ')<b>' + money(totalCommission) + '</b></div>' +
                     employeeTotalsHtml +
                 '</div>' +
                 '<p class="muted">Each employee commission is calculated separately from their own recorded sales for that date.</p>' +
