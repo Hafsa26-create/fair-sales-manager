@@ -1802,3 +1802,26 @@ footer { color: #8b6b79; }
 @media (prefers-reduced-motion: reduce) {
     #employee button { transition: none !important; }
 }
+
+
+/* Make product identity unmistakable in each employee's owner-side sales sheet. */
+#salesList .sales-table .product-code-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 76px;
+    padding: 6px 10px;
+    border: 1px solid #d8b5c3;
+    border-radius: 8px;
+    background: #f8eaf0;
+    color: #552d3e;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .035em;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+#salesList .sales-table td:nth-child(3) {
+    min-width: 130px;
+    font-weight: 650;
+}
