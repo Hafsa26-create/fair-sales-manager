@@ -1491,7 +1491,16 @@ if (!fairs.length) {
             new Date(fair.end_date + "T00:00:00") -
             new Date(fair.start_date + "T00:00:00")
         ) / 86400000) + 1);
-        const otherAdditional = Number(finance.other_expenses || 0) + Number(totals.expense_total || 0);
+        // Combine the fair's preset other-expense amount with all recorded
+        // expense entries. Normalize RPC output so missing/null values display 0,
+        // never an empty report line.
+        const reportExpenseTotal = Number(totals?.expense_total ?? 0);
+        const presetOtherExpenses = Number(finance?.other_expenses ?? 0);
+        const otherAdditional = (
+            Number.isFinite(reportExpenseTotal) ? reportExpenseTotal : 0
+        ) + (
+            Number.isFinite(presetOtherExpenses) ? presetOtherExpenses : 0
+        );
         const lunch = days * Number(finance.lunch_per_day || 0);
         const stallRent = Number(finance.stall_rent || 0);
         const totalExpense = otherAdditional + lunch + commission;
